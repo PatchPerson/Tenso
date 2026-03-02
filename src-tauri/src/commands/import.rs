@@ -1,6 +1,6 @@
 use crate::state::AppState;
 use crate::import::postman::ImportedCollection;
-use reqlite_shared::models::*;
+use tenso_shared::models::*;
 use std::sync::Arc;
 
 #[tauri::command]

@@ -106,7 +106,7 @@ function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-function mapTweakcnToReqlite(dark: Record<string, string>): Record<string, string> {
+function mapTweakcnToTenso(dark: Record<string, string>): Record<string, string> {
   const get = (key: string) => {
     const val = dark[key];
     return val ? oklchToHex(val) : null;
@@ -175,7 +175,7 @@ export async function fetchTweakcnThemes(): Promise<ThemePreset[]> {
     if (!dark) continue;
 
     try {
-      const colors = mapTweakcnToReqlite(dark);
+      const colors = mapTweakcnToTenso(dark);
       themes.push({
         key: `tweakcn-${entry.name}`,
         name: entry.title || entry.name,

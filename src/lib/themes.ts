@@ -5,9 +5,9 @@ export interface ThemePreset {
   colors: Record<string, string>;
 }
 
-const STORAGE_KEY = "reqlite-theme";
-const COLORS_KEY = "reqlite-theme-colors";
-const CUSTOM_THEMES_KEY = "reqlite-custom-themes";
+const STORAGE_KEY = "tenso-theme";
+const COLORS_KEY = "tenso-theme-colors";
+const CUSTOM_THEMES_KEY = "tenso-custom-themes";
 
 export const themes: ThemePreset[] = [
   {
@@ -380,7 +380,7 @@ export function getStoredTheme(): string {
   return localStorage.getItem(STORAGE_KEY) || "tokyo-night";
 }
 
-const FAVORITES_KEY = "reqlite-theme-favorites";
+const FAVORITES_KEY = "tenso-theme-favorites";
 
 export function getFavorites(): string[] {
   try {

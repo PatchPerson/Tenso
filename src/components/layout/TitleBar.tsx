@@ -33,7 +33,7 @@ export const TitleBar: Component = () => {
             <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
           </svg>
         </div>
-        <span class="titlebar-title" data-tauri-drag-region>ReqLite</span>
+        <span class="titlebar-title" data-tauri-drag-region>Tenso</span>
       </div>
       <div class="titlebar-drag" data-tauri-drag-region />
       <div class="titlebar-controls">

@@ -1,5 +1,5 @@
 use crate::state::AppState;
-use reqlite_shared::models::*;
+use tenso_shared::models::*;
 use std::sync::Arc;
 
 #[tauri::command]

@@ -7,7 +7,7 @@ pub async fn ws_connect(
     app_handle: tauri::AppHandle,
     id: String,
     url: String,
-    headers: Vec<reqlite_shared::models::KeyValue>,
+    headers: Vec<tenso_shared::models::KeyValue>,
 ) -> Result<(), String> {
     crate::websocket::connect(&state, &app_handle, &id, &url, &headers).await
 }

@@ -1,7 +1,7 @@
 import { createSignal } from "solid-js";
 import type { KeyValue } from "../lib/api";
 
-const STORAGE_KEY = "reqlite-global-vars";
+const STORAGE_KEY = "tenso-global-vars";
 
 const [globalVars, setGlobalVars] = createSignal<KeyValue[]>([]);
 

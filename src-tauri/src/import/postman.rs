@@ -1,4 +1,4 @@
-use reqlite_shared::models::*;
+use tenso_shared::models::*;
 use serde::Deserialize;
 use serde_json::Value;
 

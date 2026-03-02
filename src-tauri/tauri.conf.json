@@ -1,8 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicedoc/tauri/v2/packages/tauri-schema/schema.json",
-  "productName": "ReqLite",
+  "productName": "Tenso",
   "version": "0.1.0",
-  "identifier": "com.reqlite.app",
+  "identifier": "com.tenso.app",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "ReqLite",
+        "title": "Tenso",
         "width": 1280,
         "height": 800,
         "minWidth": 900,
@@ -29,7 +29,7 @@
   "plugins": {
     "deep-link": {
       "desktop": {
-        "schemes": ["reqlite"]
+        "schemes": ["tenso"]
       }
     }
   },

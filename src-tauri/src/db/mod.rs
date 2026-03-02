@@ -2,7 +2,7 @@ mod migrations;
 
 use rusqlite::Connection;
 use std::sync::Mutex;
-use reqlite_shared::models::*;
+use tenso_shared::models::*;
 
 pub struct Database {
     conn: Mutex<Connection>,

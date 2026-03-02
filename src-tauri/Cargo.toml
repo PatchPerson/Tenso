@@ -1,10 +1,10 @@
 [package]
-name = "reqlite"
+name = "tenso"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "reqlite_lib"
+name = "tenso_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [build-dependencies]
@@ -14,7 +14,7 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 tauri-plugin-shell = "2"
 tauri-plugin-deep-link = "2"
-reqlite-shared = { path = "../shared" }
+tenso-shared = { path = "../shared" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 ulid = { workspace = true }

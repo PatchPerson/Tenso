@@ -46,7 +46,7 @@ export const StatusBar: Component = () => {
         <Show when={currentEnv()}>
           <span class="status-item env-badge">{currentEnv()!.name}</span>
         </Show>
-        <span class="status-item">ReqLite v0.1.0</span>
+        <span class="status-item">Tenso v0.1.0</span>
       </div>
     </div>
   );

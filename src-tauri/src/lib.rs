@@ -15,7 +15,7 @@ use std::sync::Arc;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tracing_subscriber::fmt()
-        .with_env_filter("reqlite=debug")
+        .with_env_filter("tenso=debug")
         .init();
 
     tauri::Builder::default()
@@ -29,7 +29,7 @@ pub fn run() {
                 .expect("Failed to get app data dir");
             std::fs::create_dir_all(&data_dir).ok();
 
-            let db_path = data_dir.join("reqlite.db");
+            let db_path = data_dir.join("tenso.db");
             let state = AppState::new(db_path.to_str().unwrap())
                 .expect("Failed to initialize app state");
 

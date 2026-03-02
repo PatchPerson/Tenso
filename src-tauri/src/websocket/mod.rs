@@ -9,7 +9,7 @@ pub async fn connect(
     app_handle: &tauri::AppHandle,
     id: &str,
     url: &str,
-    _headers: &[reqlite_shared::models::KeyValue],
+    _headers: &[tenso_shared::models::KeyValue],
 ) -> Result<(), String> {
     let (ws_stream, _) = connect_async(url).await.map_err(|e| e.to_string())?;
     let (mut write, mut read) = ws_stream.split();

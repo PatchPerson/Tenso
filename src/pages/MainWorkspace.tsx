@@ -340,7 +340,7 @@ export const MainWorkspace: Component = () => {
                       <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
                     </svg>
                   </div>
-                  <h2>ReqLite</h2>
+                  <h2>Tenso</h2>
                   <p>High-Performance API Testing</p>
                   <div class="empty-shortcuts">
                     <div class="shortcut"><kbd>Ctrl+N</kbd> New request</div>

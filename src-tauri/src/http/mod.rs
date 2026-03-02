@@ -2,7 +2,7 @@
 // This module provides additional helpers for connection pooling and timing
 
 pub mod timing {
-    use reqlite_shared::models::TimingBreakdown;
+    use tenso_shared::models::TimingBreakdown;
 
     pub fn empty_timing() -> TimingBreakdown {
         TimingBreakdown {

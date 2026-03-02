@@ -1,4 +1,4 @@
-use reqlite_shared::models::*;
+use tenso_shared::models::*;
 
 pub fn generate(method: &str, url: &str, headers: &[KeyValue], body: &RequestBody, language: &str) -> Result<String, String> {
     match language {

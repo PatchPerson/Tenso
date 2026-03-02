@@ -1,4 +1,4 @@
-use reqlite_shared::models::*;
+use tenso_shared::models::*;
 
 pub fn parse_curl(input: &str) -> Result<SavedRequest, String> {
     let input = input.trim();

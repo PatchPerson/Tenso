@@ -1,4 +1,4 @@
-# ReqLite
+# Tenso
 
 High-performance API testing desktop app built with Tauri 2.0 and SolidJS. A lightweight, fast alternative to Postman with real-time team sync via Convex.
 
@@ -102,7 +102,7 @@ sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file \
 ## Quick Start
 
 ```bash
-cd reqlite
+cd tenso
 
 # Install frontend dependencies
 bun install   # or: npm install
@@ -122,7 +122,7 @@ bun run tauri build   # or: npm run tauri build
 ```
 
 Outputs:
-- **Binary:** `src-tauri/target/release/reqlite` (or `reqlite.exe` on Windows)
+- **Binary:** `src-tauri/target/release/tenso` (or `tenso.exe` on Windows)
 - **Installer:** `.msi` (Windows), `.dmg` (macOS), `.deb`/`.AppImage` (Linux) in `src-tauri/target/release/bundle/`
 
 ---
@@ -172,7 +172,7 @@ The `npx @convex-dev/auth` command auto-generates `JWT_PRIVATE_KEY` and `JWKS` e
 1. Go to [GitHub Developer Settings > OAuth Apps](https://github.com/settings/developers)
 2. Click "New OAuth App"
 3. Set:
-   - **Application name:** ReqLite (or anything)
+   - **Application name:** Tenso (or anything)
    - **Homepage URL:** `http://localhost:1420`
    - **Authorization callback URL:** `<your-convex-site-url>/api/auth/callback/github`
 4. Copy the Client ID and Client Secret into the env vars above
@@ -264,7 +264,7 @@ npx convex functions
 ## Project Structure
 
 ```
-reqlite/
+tenso/
 ├── Cargo.toml                    # Workspace root
 ├── package.json                  # Frontend dependencies
 ├── vite.config.ts                # Vite configuration
