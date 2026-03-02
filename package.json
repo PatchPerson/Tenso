@@ -10,17 +10,18 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "solid-js": "^1.9.0",
+    "@codemirror/autocomplete": "^6.0.0",
+    "@codemirror/lang-javascript": "^6.0.0",
+    "@codemirror/lang-json": "^6.0.0",
+    "@codemirror/state": "^6.0.0",
+    "@codemirror/theme-one-dark": "^6.0.0",
+    "@codemirror/view": "^6.0.0",
     "@solidjs/router": "^0.14.0",
+    "@tanstack/solid-virtual": "^3.0.0",
     "@tauri-apps/api": "^2.0.0",
     "@tauri-apps/plugin-shell": "^2.0.0",
-    "@codemirror/view": "^6.0.0",
-    "@codemirror/state": "^6.0.0",
-    "@codemirror/lang-json": "^6.0.0",
-    "@codemirror/lang-javascript": "^6.0.0",
-    "@codemirror/autocomplete": "^6.0.0",
-    "@codemirror/theme-one-dark": "^6.0.0",
-    "@tanstack/solid-virtual": "^3.0.0"
+    "convex": "^1.32.0",
+    "solid-js": "^1.9.0"
   },
   "devDependencies": {
     "typescript": "^5.5.0",
