@@ -28,6 +28,15 @@ export const RequestPanel: Component<Props> = (props) => {
         onUrlChange={(url) => props.onUpdate({ url })}
         onProtocolChange={(protocol) => props.onUpdate({ protocol })}
         onSend={props.onSend}
+        onCurlPaste={(parsed) => {
+          props.onUpdate({
+            method: parsed.method,
+            url: parsed.url,
+            headers: parsed.headers,
+            body: parsed.body,
+            name: `${parsed.method} ${parsed.url}`,
+          });
+        }}
       />
 
       <div class="request-tabs">

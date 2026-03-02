@@ -2,6 +2,7 @@ import { Component, Show, createMemo, createSignal, onCleanup, onMount } from "s
 import { globalVars, saveGlobalVars, getGlobalVarNames } from "../../stores/globals";
 import { environments, activeEnvId, addEnvironment, saveEnvironment, switchEnvironment, loadEnvironments } from "../../stores/environments";
 import { activeWorkspace } from "../../stores/collections";
+import * as api from "../../lib/api";
 
 interface Props {
   method: string;
@@ -12,6 +13,7 @@ interface Props {
   onUrlChange: (url: string) => void;
   onProtocolChange: (protocol: string) => void;
   onSend: () => void;
+  onCurlPaste?: (parsed: { method: string; url: string; headers: api.KeyValue[]; body: api.RequestBody }) => void;
 }
 
 const METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
@@ -248,6 +250,27 @@ export const UrlBar: Component<Props> = (props) => {
     }
   };
 
+  const handlePaste = async (e: ClipboardEvent) => {
+    const text = e.clipboardData?.getData("text")?.trim();
+    if (!text) return;
+    // Detect cURL commands
+    if (/^curl\s/i.test(text) && props.onCurlPaste) {
+      e.preventDefault();
+      try {
+        const parsed = await api.importCurl(text);
+        props.onCurlPaste({
+          method: parsed.method,
+          url: parsed.url,
+          headers: parsed.headers,
+          body: parsed.body,
+        });
+      } catch {
+        // Not a valid cURL - just paste as normal text
+        props.onUrlChange(text);
+      }
+    }
+  };
+
   const closeMethodOnClick = (e: MouseEvent) => {
     if (!(e.target as HTMLElement).closest(".method-dropdown-container")) {
       setShowMethodMenu(false);
@@ -356,6 +379,7 @@ export const UrlBar: Component<Props> = (props) => {
           value={props.url}
           onInput={(e) => props.onUrlChange(e.currentTarget.value)}
           onKeyDown={(e) => { if (e.key === "Enter") props.onSend(); }}
+          onPaste={handlePaste}
           onScroll={syncScroll}
           onMouseMove={handleInputMouseMove}
           onMouseLeave={handleInputMouseLeave}

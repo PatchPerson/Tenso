@@ -106,6 +106,49 @@ const RequestContextMenu: Component<{
     props.onClose();
   };
 
+  const handleCopyCurl = async () => {
+    const original = await api.getRequest(props.req.id);
+    if (!original) { props.onClose(); return; }
+    let cmd = `curl -X ${original.method}`;
+    // Add URL
+    const url = original.url;
+    cmd += ` '${url}'`;
+    // Add headers
+    for (const h of original.headers) {
+      if (h.enabled && h.key) {
+        cmd += ` \\\n  -H '${h.key}: ${h.value}'`;
+      }
+    }
+    // Add body
+    if (original.body.type === "json") {
+      cmd += ` \\\n  -H 'Content-Type: application/json'`;
+      cmd += ` \\\n  -d '${original.body.data.content}'`;
+    } else if (original.body.type === "raw") {
+      cmd += ` \\\n  -H 'Content-Type: ${original.body.data.content_type}'`;
+      cmd += ` \\\n  -d '${original.body.data.content}'`;
+    } else if (original.body.type === "form_urlencoded") {
+      const params = original.body.data.params.filter(p => p.enabled && p.key);
+      if (params.length) {
+        const encoded = params.map(p => `${encodeURIComponent(p.key)}=${encodeURIComponent(p.value)}`).join("&");
+        cmd += ` \\\n  -d '${encoded}'`;
+      }
+    }
+    // Add auth
+    if (original.auth.type === "bearer") {
+      cmd += ` \\\n  -H 'Authorization: Bearer ${(original.auth as any).config.token}'`;
+    } else if (original.auth.type === "basic") {
+      const cfg = (original.auth as any).config;
+      cmd += ` \\\n  -u '${cfg.username}:${cfg.password}'`;
+    } else if (original.auth.type === "api_key") {
+      const cfg = (original.auth as any).config;
+      if (cfg.add_to === "header") {
+        cmd += ` \\\n  -H '${cfg.key}: ${cfg.value}'`;
+      }
+    }
+    navigator.clipboard.writeText(cmd).catch(() => {});
+    props.onClose();
+  };
+
   const handleDelete = () => {
     removeRequest(props.req.id);
     props.onClose();
@@ -136,6 +179,9 @@ const RequestContextMenu: Component<{
         <button class="dropdown-item" onClick={handleCopyUrl}>
           <span class="ctx-label">Copy URL</span>
           <span class="ctx-shortcut">Ctrl+C</span>
+        </button>
+        <button class="dropdown-item" onClick={handleCopyCurl}>
+          <span class="ctx-label">Copy as cURL</span>
         </button>
         <button class="dropdown-item" onClick={handleDuplicate}>
           <span class="ctx-label">Duplicate</span>
