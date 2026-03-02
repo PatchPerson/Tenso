@@ -25,7 +25,7 @@ jobs:
       matrix:
         include:
           - os: macos-latest
-            target: universal-apple-darwin
+            target: aarch64-apple-darwin
             label: macos
           - os: windows-latest
             target: ''
@@ -59,7 +59,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.label == 'macos' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+          targets: ${{ matrix.label == 'macos' && 'aarch64-apple-darwin' || '' }}
 
       - uses: swatinem/rust-cache@v2
         with:
@@ -90,9 +90,9 @@ jobs:
         with:
           name: macos-artifacts
           path: |
-            src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
-            src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app.tar.gz
-            src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app.tar.gz.sig
+            src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+            src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.app.tar.gz
+            src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.app.tar.gz.sig
 
       - name: Upload Windows artifacts
         if: matrix.label == 'windows'
@@ -169,8 +169,6 @@ jobs:
               version: $version,
               pub_date: $pub_date,
               platforms: {
-                "darwin-universal": { url: $macos_url, signature: $macos_sig },
-                "darwin-x86_64": { url: $macos_url, signature: $macos_sig },
                 "darwin-aarch64": { url: $macos_url, signature: $macos_sig },
                 "linux-x86_64": { url: $linux_url, signature: $linux_sig },
                 "windows-x86_64": { url: $windows_nsis_url, signature: $windows_nsis_sig }
