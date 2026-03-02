@@ -1,5 +1,6 @@
-import { Component, Show, createSignal, onMount } from "solid-js";
+import { Component, Show, For, createSignal, onMount } from "solid-js";
 import { Sidebar } from "../components/layout/Sidebar";
+import { TitleBar } from "../components/layout/TitleBar";
 import { TabBar } from "../components/layout/TabBar";
 import { StatusBar } from "../components/layout/StatusBar";
 import { RequestPanel } from "../components/request/RequestPanel";
@@ -11,7 +12,7 @@ import { Settings } from "./Settings";
 import { tabs, activeTabId, getActiveTab, updateTab, executeRequest, createNewTab, saveRequest } from "../stores/request";
 import { activeWorkspace } from "../stores/collections";
 import { loadEnvironments } from "../stores/environments";
-import { loadHistory } from "../stores/history";
+import { loadHistory, filteredHistory, historySearch, setHistorySearch, clearAllHistory } from "../stores/history";
 import type { Tab } from "../stores/request";
 
 type SidePanel = "collections" | "environments" | "history" | "settings";
@@ -114,6 +115,7 @@ export const MainWorkspace: Component = () => {
 
   return (
     <div class="workspace">
+      <TitleBar />
       <div class="workspace-sidebar" style={{ width: `${sidebarWidth()}px` }}>
         <div class="sidebar-nav">
           <button
@@ -160,8 +162,56 @@ export const MainWorkspace: Component = () => {
             <div class="history-panel">
               <div class="sidebar-header">
                 <span class="sidebar-title">History</span>
+                <Show when={filteredHistory().length > 0}>
+                  <button class="icon-btn danger" title="Clear history" onClick={() => clearAllHistory(activeWorkspace())}>
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2" y1="2" x2="10" y2="10" /><line x1="10" y1="2" x2="2" y2="10" /></svg>
+                  </button>
+                </Show>
               </div>
-              <div class="sidebar-empty">History entries will appear here after sending requests.</div>
+              <div class="history-search">
+                <input
+                  class="add-input"
+                  placeholder="Search history..."
+                  value={historySearch()}
+                  onInput={(e) => setHistorySearch(e.currentTarget.value)}
+                />
+              </div>
+              <div class="sidebar-tree">
+                <Show when={filteredHistory().length > 0} fallback={<div class="sidebar-empty">No history entries yet.</div>}>
+                  <For each={filteredHistory()}>
+                    {(entry) => {
+                      const date = new Date(entry.timestamp);
+                      const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                      const statusClass = entry.status >= 200 && entry.status < 300 ? "success" : entry.status >= 400 ? "error" : "";
+                      return (
+                        <div
+                          class="tree-item request history-entry"
+                          onClick={() => {
+                            const tab = createNewTab();
+                            updateTab(tab.id, {
+                              method: entry.method,
+                              url: entry.url,
+                              name: entry.url,
+                            });
+                          }}
+                        >
+                          <span class={`method-badge ${entry.method.toLowerCase()}`}>
+                            {entry.method}
+                          </span>
+                          <div class="history-info">
+                            <span class="item-name">{entry.url}</span>
+                            <div class="history-meta">
+                              <span class={`history-status ${statusClass}`}>{entry.status}</span>
+                              <span class="history-time">{entry.duration_ms}ms</span>
+                              <span class="history-timestamp">{timeStr}</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }}
+                  </For>
+                </Show>
+              </div>
             </div>
           </Show>
           <Show when={sidePanel() === "settings"}>

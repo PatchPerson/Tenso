@@ -1,6 +1,28 @@
-import { Component, For, Show, createSignal } from "solid-js";
-import { collections, addCollection, removeCollection, addRequest, removeRequest, loading, CollectionNode } from "../../stores/collections";
+import { Component, For, Show, createSignal, onMount, onCleanup } from "solid-js";
+import { collections, addCollection, removeCollection, addRequest, removeRequest, loading, activeWorkspace, CollectionNode } from "../../stores/collections";
 import { openRequestInTab } from "../../stores/request";
+import * as api from "../../lib/api";
+
+// Module-level expanded state that persists across re-renders from loadCollections
+const [expandedFolders, setExpandedFolders] = createSignal<Set<string>>(new Set<string>());
+
+const toggleFolder = (id: string) => {
+  setExpandedFolders(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    return next;
+  });
+};
+
+const expandFolder = (id: string) => {
+  setExpandedFolders(prev => {
+    if (prev.has(id)) return prev;
+    const next = new Set(prev);
+    next.add(id);
+    return next;
+  });
+};
 
 const METHOD_COLORS: Record<string, string> = {
   GET: "var(--method-get)",
@@ -18,8 +40,120 @@ const FolderIcon = () => (
   </svg>
 );
 
+const ThreeDotsIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+    <circle cx="7" cy="3" r="0.75" fill="currentColor" />
+    <circle cx="7" cy="7" r="0.75" fill="currentColor" />
+    <circle cx="7" cy="11" r="0.75" fill="currentColor" />
+  </svg>
+);
+
+const RequestContextMenu: Component<{
+  req: api.SavedRequest;
+  onClose: () => void;
+}> = (props) => {
+  const [renaming, setRenaming] = createSignal(false);
+  const [renameName, setRenameName] = createSignal(props.req.name);
+
+  const handleRename = async () => {
+    const name = renameName().trim();
+    if (!name || name === props.req.name) { setRenaming(false); return; }
+    const original = await api.getRequest(props.req.id);
+    if (original) {
+      await api.updateRequest({ ...original, name });
+      // Reload collections to reflect change
+      const wsId = activeWorkspace();
+      if (wsId) {
+        const { loadCollections } = await import("../../stores/collections");
+        await loadCollections(wsId);
+      }
+    }
+    props.onClose();
+  };
+
+  const handleDuplicate = async () => {
+    const original = await api.getRequest(props.req.id);
+    if (original) {
+      const created = await api.createRequest(
+        original.collection_id,
+        original.name + " (copy)",
+        original.method,
+        original.url
+      );
+      // Update the duplicated request with full data
+      if (created) {
+        await api.updateRequest({
+          ...created,
+          headers: original.headers,
+          params: original.params,
+          body: original.body,
+          auth: original.auth,
+          pre_script: original.pre_script,
+          post_script: original.post_script,
+        });
+      }
+      const wsId = activeWorkspace();
+      if (wsId) {
+        const { loadCollections } = await import("../../stores/collections");
+        await loadCollections(wsId);
+      }
+    }
+    props.onClose();
+  };
+
+  const handleCopyUrl = () => {
+    navigator.clipboard.writeText(props.req.url).catch(() => {});
+    props.onClose();
+  };
+
+  const handleDelete = () => {
+    removeRequest(props.req.id);
+    props.onClose();
+  };
+
+  return (
+    <Show when={!renaming()} fallback={
+      <div class="dropdown req-context-menu" onClick={(e) => e.stopPropagation()}>
+        <div class="req-rename-row">
+          <input
+            class="req-rename-input"
+            value={renameName()}
+            onInput={(e) => setRenameName(e.currentTarget.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleRename();
+              if (e.key === "Escape") props.onClose();
+            }}
+            autofocus
+          />
+        </div>
+      </div>
+    }>
+      <div class="dropdown req-context-menu" onClick={(e) => e.stopPropagation()}>
+        <button class="dropdown-item" onClick={() => setRenaming(true)}>
+          <span class="ctx-label">Rename</span>
+          <span class="ctx-shortcut">Ctrl+E</span>
+        </button>
+        <button class="dropdown-item" onClick={handleCopyUrl}>
+          <span class="ctx-label">Copy URL</span>
+          <span class="ctx-shortcut">Ctrl+C</span>
+        </button>
+        <button class="dropdown-item" onClick={handleDuplicate}>
+          <span class="ctx-label">Duplicate</span>
+          <span class="ctx-shortcut">Ctrl+D</span>
+        </button>
+        <div class="dropdown-sep" />
+        <button class="dropdown-item danger" onClick={handleDelete}>
+          <span class="ctx-label">Delete</span>
+          <span class="ctx-shortcut">Del</span>
+        </button>
+      </div>
+    </Show>
+  );
+};
+
 const FolderNode: Component<{ node: CollectionNode; depth: number }> = (props) => {
-  const [expanded, setExpanded] = createSignal(false);
+  const id = () => props.node.collection.id;
+  const expanded = () => expandedFolders().has(id());
   const [showMenu, setShowMenu] = createSignal(false);
   const [adding, setAdding] = createSignal<"request" | "folder" | null>(null);
   const [newName, setNewName] = createSignal("");
@@ -34,7 +168,7 @@ const FolderNode: Component<{ node: CollectionNode; depth: number }> = (props) =
     }
     setNewName("");
     setAdding(null);
-    setExpanded(true);
+    expandFolder(id());
   };
 
   return (
@@ -42,7 +176,7 @@ const FolderNode: Component<{ node: CollectionNode; depth: number }> = (props) =
       <div
         class="tree-item folder"
         style={{ "padding-left": `${props.depth * 16 + 8}px` }}
-        onClick={() => setExpanded(!expanded())}
+        onClick={() => toggleFolder(id())}
         onContextMenu={(e) => { e.preventDefault(); setShowMenu(!showMenu()); }}
       >
         <span class="expand-icon" style={{ transform: expanded() ? "rotate(0deg)" : "rotate(-90deg)" }}>
@@ -51,7 +185,7 @@ const FolderNode: Component<{ node: CollectionNode; depth: number }> = (props) =
         <span class="folder-icon"><FolderIcon /></span>
         <span class="item-name">{props.node.collection.name}</span>
         <div class="item-actions">
-          <button class="icon-btn" title="Add request" onClick={(e) => { e.stopPropagation(); setAdding("request"); setExpanded(true); }}>
+          <button class="icon-btn" title="Add request" onClick={(e) => { e.stopPropagation(); setAdding("request"); expandFolder(id()); }}>
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="6" y1="2" x2="6" y2="10" /><line x1="2" y1="6" x2="10" y2="6" /></svg>
           </button>
           <button class="icon-btn danger" title="Delete" onClick={(e) => { e.stopPropagation(); removeCollection(props.node.collection.id); }}>
@@ -79,25 +213,55 @@ const FolderNode: Component<{ node: CollectionNode; depth: number }> = (props) =
         </For>
 
         <For each={props.node.requests}>
-          {(req) => (
-            <div
-              class="tree-item request"
-              style={{ "padding-left": `${(props.depth + 1) * 16 + 8}px` }}
-              onClick={() => openRequestInTab(req)}
-            >
-              <span class={`method-badge ${req.method.toLowerCase()}`}>
-                {req.method}
-              </span>
-              <span class="item-name">{req.name}</span>
-              <div class="item-actions">
-                <button class="icon-btn danger" title="Delete" onClick={(e) => { e.stopPropagation(); removeRequest(req.id); }}>
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2" y1="2" x2="10" y2="10" /><line x1="10" y1="2" x2="2" y2="10" /></svg>
-                </button>
-              </div>
-            </div>
-          )}
+          {(req) => <RequestItem req={req} depth={props.depth + 1} />}
         </For>
       </Show>
+    </div>
+  );
+};
+
+const RequestItem: Component<{ req: api.SavedRequest; depth: number }> = (props) => {
+  const [showCtxMenu, setShowCtxMenu] = createSignal(false);
+
+  const closeOnOutsideClick = (e: MouseEvent) => {
+    if (!(e.target as HTMLElement).closest(".req-ctx-container")) {
+      setShowCtxMenu(false);
+    }
+  };
+
+  onMount(() => {
+    document.addEventListener("click", closeOnOutsideClick);
+    onCleanup(() => document.removeEventListener("click", closeOnOutsideClick));
+  });
+
+  return (
+    <div
+      class="tree-item request"
+      style={{ "padding-left": `${props.depth * 16 + 8}px` }}
+      onClick={() => openRequestInTab(props.req)}
+      onContextMenu={(e) => { e.preventDefault(); setShowCtxMenu(true); }}
+    >
+      <span class={`method-badge ${props.req.method.toLowerCase()}`}>
+        {props.req.method}
+      </span>
+      <span class="item-name">{props.req.name}</span>
+      <div class="item-actions">
+        <div class="req-ctx-container">
+          <button
+            class="icon-btn req-dots-btn"
+            title="More options"
+            onClick={(e) => { e.stopPropagation(); setShowCtxMenu(!showCtxMenu()); }}
+          >
+            <ThreeDotsIcon />
+          </button>
+          <Show when={showCtxMenu()}>
+            <RequestContextMenu
+              req={props.req}
+              onClose={() => setShowCtxMenu(false)}
+            />
+          </Show>
+        </div>
+      </div>
     </div>
   );
 };

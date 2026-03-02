@@ -1,6 +1,6 @@
 import { Component, Show, createSignal } from "solid-js";
 import { UrlBar } from "./UrlBar";
-import { KeyValueGrid } from "../shared/KeyValueGrid";
+import { KeyValueGrid, COMMON_HEADERS } from "../shared/KeyValueGrid";
 import { BodyEditor } from "./BodyEditor";
 import { AuthEditor } from "./AuthEditor";
 import type { Tab } from "../../stores/request";
@@ -22,9 +22,11 @@ export const RequestPanel: Component<Props> = (props) => {
       <UrlBar
         method={props.tab.method}
         url={props.tab.url}
+        protocol={props.tab.protocol}
         loading={props.tab.loading}
         onMethodChange={(method) => props.onUpdate({ method })}
         onUrlChange={(url) => props.onUpdate({ url })}
+        onProtocolChange={(protocol) => props.onUpdate({ protocol })}
         onSend={props.onSend}
       />
 
@@ -58,6 +60,7 @@ export const RequestPanel: Component<Props> = (props) => {
             items={props.tab.headers}
             onChange={(headers) => props.onUpdate({ headers })}
             placeholder={{ key: "Header", value: "Value" }}
+            keySuggestions={COMMON_HEADERS}
           />
         </Show>
         <Show when={activeSection() === "body"}>

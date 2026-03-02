@@ -66,8 +66,31 @@ export async function addCollection(name: string, parentId: string | null = null
   await loadCollections(wsId);
 }
 
-export async function removeCollection(id: string) {
+async function deleteCollectionRecursive(id: string) {
+  // Delete all requests in this collection first
+  const reqs = await api.listRequests(id);
+  for (const req of reqs) {
+    await api.deleteRequest(req.id);
+  }
+  // Delete child collections recursively
+  const wsId = activeWorkspace();
+  if (wsId) {
+    const allCols = await api.listCollections(wsId);
+    const children = allCols.filter(c => c.parent_id === id);
+    for (const child of children) {
+      await deleteCollectionRecursive(child.id);
+    }
+  }
+  // Now delete the empty collection
   await api.deleteCollection(id);
+}
+
+export async function removeCollection(id: string) {
+  try {
+    await deleteCollectionRecursive(id);
+  } catch (err) {
+    console.error("Failed to delete collection:", err);
+  }
   const wsId = activeWorkspace();
   if (wsId) await loadCollections(wsId);
 }
@@ -79,7 +102,11 @@ export async function addRequest(collectionId: string, name: string, method: str
 }
 
 export async function removeRequest(id: string) {
-  await api.deleteRequest(id);
+  try {
+    await api.deleteRequest(id);
+  } catch (err) {
+    console.error("Failed to delete request:", err);
+  }
   const wsId = activeWorkspace();
   if (wsId) await loadCollections(wsId);
 }

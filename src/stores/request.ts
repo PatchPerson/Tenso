@@ -1,11 +1,14 @@
 import { createSignal } from "solid-js";
 import * as api from "../lib/api";
+import { resolveGlobals } from "./globals";
+import { loadHistory } from "./history";
 
 export interface Tab {
   id: string;
   name: string;
   method: string;
   url: string;
+  protocol: string;
   headers: api.KeyValue[];
   params: api.KeyValue[];
   body: api.RequestBody;
@@ -33,6 +36,7 @@ export function createNewTab(): Tab {
     name: `New Request ${tabCounter}`,
     method: "GET",
     url: "",
+    protocol: "http://",
     headers: [],
     params: [],
     body: { type: "none" },
@@ -64,6 +68,7 @@ export function openRequestInTab(req: api.SavedRequest) {
     name: req.name,
     method: req.method,
     url: req.url,
+    protocol: "http://",
     headers: [...req.headers],
     params: [...req.params],
     body: req.body,
@@ -117,6 +122,30 @@ export function getActiveTab(): Tab | undefined {
   return tabs().find(t => t.id === activeTabId());
 }
 
+function resolveKeyValues(items: api.KeyValue[]): api.KeyValue[] {
+  return items.map(kv => ({ ...kv, key: resolveGlobals(kv.key), value: resolveGlobals(kv.value) }));
+}
+
+function resolveBody(body: api.RequestBody): api.RequestBody {
+  switch (body.type) {
+    case "raw": return { type: "raw", data: { content: resolveGlobals(body.data.content), content_type: body.data.content_type } };
+    case "json": return { type: "json", data: { content: resolveGlobals(body.data.content) } };
+    case "form_urlencoded": return { type: "form_urlencoded", data: { params: resolveKeyValues(body.data.params) } };
+    case "form_data": return { type: "form_data", data: { params: body.data.params.map(p => ({ ...p, key: resolveGlobals(p.key), value: resolveGlobals(p.value) })) } };
+    case "graphql": return { type: "graphql", data: { query: resolveGlobals(body.data.query), variables: resolveGlobals(body.data.variables) } };
+    default: return body;
+  }
+}
+
+function resolveAuth(auth: api.AuthConfig): api.AuthConfig {
+  switch (auth.type) {
+    case "bearer": return { type: "bearer", config: { token: resolveGlobals(auth.config.token) } };
+    case "api_key": return { type: "api_key", config: { key: resolveGlobals(auth.config.key), value: resolveGlobals(auth.config.value), add_to: auth.config.add_to } };
+    case "basic": return { type: "basic", config: { username: resolveGlobals(auth.config.username), password: resolveGlobals(auth.config.password) } };
+    default: return auth;
+  }
+}
+
 export async function executeRequest(tabId: string, workspaceId: string) {
   const tab = tabs().find(t => t.id === tabId);
   if (!tab) return;
@@ -124,11 +153,21 @@ export async function executeRequest(tabId: string, workspaceId: string) {
   updateTab(tabId, { loading: true, response: null });
 
   try {
+    let resolvedUrl = resolveGlobals(tab.url);
+    if (!/^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\//.test(resolvedUrl)) {
+      resolvedUrl = (tab.protocol || "http://") + resolvedUrl;
+    }
     const response = await api.sendRequest(
-      tab.method, tab.url, tab.headers, tab.params,
-      tab.body, tab.auth, workspaceId
+      tab.method,
+      resolvedUrl,
+      resolveKeyValues(tab.headers),
+      resolveKeyValues(tab.params),
+      resolveBody(tab.body),
+      resolveAuth(tab.auth),
+      workspaceId
     );
     updateTab(tabId, { response, loading: false });
+    loadHistory(workspaceId).catch(() => {});
   } catch (err) {
     updateTab(tabId, {
       loading: false,
