@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ReqLite</title>
+  <style>
+    :root {
+      --bg-primary: #1e1e2e;
+      --bg-secondary: #181825;
+      --bg-tertiary: #313244;
+      --bg-hover: #45475a;
+      --text-primary: #cdd6f4;
+      --text-secondary: #a6adc8;
+      --text-muted: #6c7086;
+      --border: #45475a;
+      --accent: #89b4fa;
+      --accent-hover: #74c7ec;
+      --success: #a6e3a1;
+      --warning: #f9e2af;
+      --error: #f38ba8;
+      --method-get: #a6e3a1;
+      --method-post: #f9e2af;
+      --method-put: #89b4fa;
+      --method-delete: #f38ba8;
+      --method-patch: #cba6f7;
+      --method-head: #94e2d5;
+      --method-options: #fab387;
+      --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      --radius-sm: 4px;
+      --radius-md: 6px;
+      --radius-lg: 8px;
+      --shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    [data-theme="light"] {
+      --bg-primary: #eff1f5;
+      --bg-secondary: #e6e9ef;
+      --bg-tertiary: #ccd0da;
+      --bg-hover: #bcc0cc;
+      --text-primary: #4c4f69;
+      --text-secondary: #5c5f77;
+      --text-muted: #8c8fa1;
+      --border: #ccd0da;
+      --accent: #1e66f5;
+      --accent-hover: #04a5e5;
+      --shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      overflow: hidden;
+      height: 100vh;
+    }
+    #root { height: 100vh; display: flex; flex-direction: column; }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--bg-hover); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+    input, textarea, select, button { font-family: inherit; }
+    button { cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
