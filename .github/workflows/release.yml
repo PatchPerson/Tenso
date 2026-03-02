@@ -13,6 +13,11 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: oven-sh/setup-bun@v2
+      - uses: actions/cache@v5
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
       - run: bun install --frozen-lockfile
       - run: bunx convex deploy --cmd 'echo skip'
         env:
@@ -55,6 +60,11 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 20
+      - uses: actions/cache@v5
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
       - run: bun install --frozen-lockfile
 
       - uses: dtolnay/rust-toolchain@stable
@@ -63,8 +73,9 @@ jobs:
 
       - uses: swatinem/rust-cache@v2
         with:
-          workspaces: src-tauri
+          workspaces: './src-tauri -> target'
           shared-key: ${{ matrix.label }}
+          cache-on-failure: true
 
       - name: Create .env.production
         shell: bash
