@@ -1,5 +1,5 @@
 [workspace]
-members = ["shared", "src-tauri", "sync-server"]
+members = ["shared", "src-tauri"]
 resolver = "2"
 
 [workspace.dependencies]

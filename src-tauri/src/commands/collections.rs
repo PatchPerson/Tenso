@@ -3,23 +3,23 @@ use reqlite_shared::models::*;
 use std::sync::Arc;
 
 #[tauri::command]
-pub async fn list_workspaces(state: tauri::State<'_, Arc<AppState>>) -> Result<Vec<Workspace>, String> {
-    state.db.list_workspaces().map_err(|e| e.to_string())
+pub async fn list_teams(state: tauri::State<'_, Arc<AppState>>) -> Result<Vec<Team>, String> {
+    state.db.list_teams().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub async fn create_workspace(state: tauri::State<'_, Arc<AppState>>, name: String) -> Result<Workspace, String> {
-    state.db.create_workspace(&name).map_err(|e| e.to_string())
+pub async fn create_team(state: tauri::State<'_, Arc<AppState>>, name: String) -> Result<Team, String> {
+    state.db.create_team(&name).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub async fn list_collections(state: tauri::State<'_, Arc<AppState>>, workspace_id: String) -> Result<Vec<Collection>, String> {
-    state.db.list_collections(&workspace_id).map_err(|e| e.to_string())
+pub async fn list_collections(state: tauri::State<'_, Arc<AppState>>, team_id: String) -> Result<Vec<Collection>, String> {
+    state.db.list_collections(&team_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub async fn create_collection(state: tauri::State<'_, Arc<AppState>>, workspace_id: String, parent_id: Option<String>, name: String) -> Result<Collection, String> {
-    state.db.create_collection(&workspace_id, parent_id.as_deref(), &name).map_err(|e| e.to_string())
+pub async fn create_collection(state: tauri::State<'_, Arc<AppState>>, team_id: String, parent_id: Option<String>, name: String) -> Result<Collection, String> {
+    state.db.create_collection(&team_id, parent_id.as_deref(), &name).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

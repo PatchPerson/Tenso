@@ -12,12 +12,12 @@ pub async fn send_request(
     params: Vec<KeyValue>,
     body: RequestBody,
     auth: AuthConfig,
-    workspace_id: String,
+    team_id: String,
 ) -> Result<HttpResponse, String> {
     // Resolve environment variables
     let active_env = state.active_environment.read().unwrap().clone();
     let env_vars = if let Some(env_id) = &active_env {
-        state.db.list_environments(&workspace_id)
+        state.db.list_environments(&team_id)
             .map_err(|e| e.to_string())?
             .into_iter()
             .find(|e| e.id == *env_id)
@@ -148,7 +148,7 @@ pub async fn send_request(
     // Save to history
     let history_entry = HistoryEntry {
         id: ulid::Ulid::new().to_string(),
-        workspace_id: workspace_id.clone(),
+        team_id: team_id.clone(),
         method: method.clone(),
         url: url.clone(),
         status,

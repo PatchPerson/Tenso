@@ -8,7 +8,6 @@ mod websocket;
 mod scripting;
 mod import;
 mod codegen;
-mod sync_client;
 
 use state::AppState;
 use std::sync::Arc;
@@ -21,6 +20,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_deep_link::init())
         .setup(|app| {
             let app_handle = app.handle().clone();
             let data_dir = app_handle
@@ -37,8 +37,8 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            commands::collections::list_workspaces,
-            commands::collections::create_workspace,
+            commands::collections::list_teams,
+            commands::collections::create_team,
             commands::collections::list_collections,
             commands::collections::create_collection,
             commands::collections::update_collection,
@@ -65,9 +65,17 @@ pub fn run() {
             commands::websocket::ws_connect,
             commands::websocket::ws_send,
             commands::websocket::ws_disconnect,
-            commands::sync::connect_sync,
-            commands::sync::disconnect_sync,
-            commands::sync::get_sync_status,
+            commands::sync::get_modified_since,
+            commands::sync::get_unsynced_deletes,
+            commands::sync::mark_deletes_synced,
+            commands::sync::upsert_collection,
+            commands::sync::upsert_request,
+            commands::sync::upsert_environment,
+            commands::sync::upsert_history,
+            commands::sync::soft_delete_entity,
+            commands::sync::get_sync_state,
+            commands::sync::set_sync_state,
+            commands::sync::get_all_for_team,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

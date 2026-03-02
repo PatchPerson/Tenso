@@ -6,18 +6,17 @@ export interface KeyValue {
   enabled: boolean;
 }
 
-export interface Workspace {
+export interface Team {
   id: string;
   name: string;
-  sync_url: string | null;
-  api_key: string | null;
+  convex_team_id: string | null;
   created_at: string;
   updated_at: string;
 }
 
 export interface Collection {
   id: string;
-  workspace_id: string;
+  team_id: string;
   parent_id: string | null;
   name: string;
   sort_order: number;
@@ -66,7 +65,7 @@ export interface SavedRequest {
 
 export interface Environment {
   id: string;
-  workspace_id: string;
+  team_id: string;
   name: string;
   variables: KeyValue[];
   created_at: string;
@@ -75,7 +74,7 @@ export interface Environment {
 
 export interface HistoryEntry {
   id: string;
-  workspace_id: string;
+  team_id: string;
   method: string;
   url: string;
   status: number;
@@ -105,20 +104,14 @@ export interface HttpResponse {
   timing: TimingBreakdown;
 }
 
-export interface SyncStatus {
-  connected: boolean;
-  server_url: string | null;
-  last_revision: number;
-}
-
-// Workspace API
-export const listWorkspaces = () => invoke<Workspace[]>("list_workspaces");
-export const createWorkspace = (name: string) => invoke<Workspace>("create_workspace", { name });
+// Team API
+export const listTeams = () => invoke<Team[]>("list_teams");
+export const createTeam = (name: string) => invoke<Team>("create_team", { name });
 
 // Collection API
-export const listCollections = (workspaceId: string) => invoke<Collection[]>("list_collections", { workspaceId });
-export const createCollection = (workspaceId: string, parentId: string | null, name: string) =>
-  invoke<Collection>("create_collection", { workspaceId, parentId, name });
+export const listCollections = (teamId: string) => invoke<Collection[]>("list_collections", { teamId });
+export const createCollection = (teamId: string, parentId: string | null, name: string) =>
+  invoke<Collection>("create_collection", { teamId, parentId, name });
 export const updateCollection = (id: string, name: string) => invoke<void>("update_collection", { id, name });
 export const deleteCollection = (id: string) => invoke<void>("delete_collection", { id });
 
@@ -133,24 +126,24 @@ export const deleteRequest = (id: string) => invoke<void>("delete_request", { id
 // HTTP API
 export const sendRequest = (
   method: string, url: string, headers: KeyValue[], params: KeyValue[],
-  body: RequestBody, auth: AuthConfig, workspaceId: string
-) => invoke<HttpResponse>("send_request", { method, url, headers, params, body, auth, workspaceId });
+  body: RequestBody, auth: AuthConfig, teamId: string
+) => invoke<HttpResponse>("send_request", { method, url, headers, params, body, auth, teamId });
 
 // Environment API
-export const listEnvironments = (workspaceId: string) => invoke<Environment[]>("list_environments", { workspaceId });
-export const createEnvironment = (workspaceId: string, name: string) => invoke<Environment>("create_environment", { workspaceId, name });
+export const listEnvironments = (teamId: string) => invoke<Environment[]>("list_environments", { teamId });
+export const createEnvironment = (teamId: string, name: string) => invoke<Environment>("create_environment", { teamId, name });
 export const updateEnvironment = (environment: Environment) => invoke<void>("update_environment", { environment });
 export const deleteEnvironment = (id: string) => invoke<void>("delete_environment", { id });
 export const getActiveEnvironment = () => invoke<string | null>("get_active_environment");
 export const setActiveEnvironment = (envId: string | null) => invoke<void>("set_active_environment", { envId });
 
 // History API
-export const listHistory = (workspaceId: string, limit?: number) => invoke<HistoryEntry[]>("list_history", { workspaceId, limit });
-export const clearHistory = (workspaceId: string) => invoke<void>("clear_history", { workspaceId });
+export const listHistory = (teamId: string, limit?: number) => invoke<HistoryEntry[]>("list_history", { teamId, limit });
+export const clearHistory = (teamId: string) => invoke<void>("clear_history", { teamId });
 
 // Import API
 export const importCurl = (curlCommand: string) => invoke<SavedRequest>("import_curl", { curlCommand });
-export const importOpenapi = (specJson: string, workspaceId: string) => invoke<Collection[]>("import_openapi", { specJson, workspaceId });
+export const importOpenapi = (specJson: string, teamId: string) => invoke<Collection[]>("import_openapi", { specJson, teamId });
 
 export interface ImportedCollection {
   name: string;
@@ -173,8 +166,36 @@ export const wsConnect = (id: string, url: string, headers: KeyValue[]) => invok
 export const wsSend = (id: string, message: string) => invoke<void>("ws_send", { id, message });
 export const wsDisconnect = (id: string) => invoke<void>("ws_disconnect", { id });
 
-// Sync API
-export const connectSync = (serverUrl: string, token: string, workspaceId: string) =>
-  invoke<void>("connect_sync", { serverUrl, token, workspaceId });
-export const disconnectSync = () => invoke<void>("disconnect_sync");
-export const getSyncStatus = () => invoke<SyncStatus>("get_sync_status");
+// Sync Commands
+export const getModifiedSince = (teamId: string, sinceMs: number) =>
+  invoke<{ collections: Collection[]; requests: SavedRequest[]; environments: Environment[]; history: HistoryEntry[] }>("get_modified_since", { teamId, sinceMs });
+
+export const getUnsyncedDeletes = () =>
+  invoke<Array<{ id: string; entityType: string; entityId: string }>>("get_unsynced_deletes");
+
+export const markDeletesSynced = (ids: string[]) =>
+  invoke<void>("mark_deletes_synced", { ids });
+
+export const upsertCollection = (collection: Collection) =>
+  invoke<void>("upsert_collection", { collection });
+
+export const upsertRequest = (request: SavedRequest) =>
+  invoke<void>("upsert_request", { request });
+
+export const upsertEnvironment = (environment: Environment) =>
+  invoke<void>("upsert_environment", { environment });
+
+export const upsertHistory = (entry: HistoryEntry) =>
+  invoke<void>("upsert_history", { entry });
+
+export const softDeleteEntity = (entityType: string, entityId: string) =>
+  invoke<void>("soft_delete_entity", { entityType, entityId });
+
+export const getSyncState = (teamId: string) =>
+  invoke<{ lastPullAt: number; lastPushAt: number }>("get_sync_state", { teamId });
+
+export const setSyncState = (teamId: string, lastPull: number, lastPush: number) =>
+  invoke<void>("set_sync_state", { teamId, lastPull, lastPush });
+
+export const getAllForTeam = (teamId: string) =>
+  invoke<{ collections: Collection[]; requests: SavedRequest[]; environments: Environment[]; history: HistoryEntry[] }>("get_all_for_team", { teamId });

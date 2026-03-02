@@ -1,4 +1,4 @@
-import { createSignal, createRoot } from "solid-js";
+import { createSignal } from "solid-js";
 import { createStore, produce } from "solid-js/store";
 import * as api from "../lib/api";
 
@@ -9,26 +9,37 @@ export interface CollectionNode {
   expanded: boolean;
 }
 
-const [workspaces, setWorkspaces] = createSignal<api.Workspace[]>([]);
-const [activeWorkspace, setActiveWorkspace] = createSignal<string>("");
+const [teams, setTeams] = createSignal<api.Team[]>([]);
+const [activeTeam, setActiveTeam] = createSignal<string>("");
 const [collections, setCollections] = createStore<CollectionNode[]>([]);
 const [loading, setLoading] = createSignal(false);
 
-export { workspaces, activeWorkspace, collections, loading };
+// Alias for backward compatibility
+const activeWorkspace = activeTeam;
 
-export async function loadWorkspaces() {
-  const ws = await api.listWorkspaces();
-  setWorkspaces(ws);
-  if (ws.length > 0 && !activeWorkspace()) {
-    setActiveWorkspace(ws[0].id);
-    await loadCollections(ws[0].id);
+export { teams, activeTeam, activeWorkspace, collections, loading };
+
+const [refreshTrigger, setRefreshTrigger] = createSignal(0);
+export { refreshTrigger };
+export function triggerRefresh() {
+  setRefreshTrigger(refreshTrigger() + 1);
+  const teamId = activeTeam();
+  if (teamId) loadCollections(teamId);
+}
+
+export async function loadTeams() {
+  const ts = await api.listTeams();
+  setTeams(ts);
+  if (ts.length > 0 && !activeTeam()) {
+    setActiveTeam(ts[0].id);
+    await loadCollections(ts[0].id);
   }
 }
 
-export async function loadCollections(workspaceId: string) {
+export async function loadCollections(teamId: string) {
   setLoading(true);
   try {
-    const cols = await api.listCollections(workspaceId);
+    const cols = await api.listCollections(teamId);
     const nodes: CollectionNode[] = [];
     const map = new Map<string, CollectionNode>();
 
@@ -60,10 +71,10 @@ export async function loadCollections(workspaceId: string) {
 }
 
 export async function addCollection(name: string, parentId: string | null = null) {
-  const wsId = activeWorkspace();
-  if (!wsId) return;
-  await api.createCollection(wsId, parentId, name);
-  await loadCollections(wsId);
+  const teamId = activeTeam();
+  if (!teamId) return;
+  await api.createCollection(teamId, parentId, name);
+  await loadCollections(teamId);
 }
 
 async function deleteCollectionRecursive(id: string) {
@@ -73,9 +84,9 @@ async function deleteCollectionRecursive(id: string) {
     await api.deleteRequest(req.id);
   }
   // Delete child collections recursively
-  const wsId = activeWorkspace();
-  if (wsId) {
-    const allCols = await api.listCollections(wsId);
+  const teamId = activeTeam();
+  if (teamId) {
+    const allCols = await api.listCollections(teamId);
     const children = allCols.filter(c => c.parent_id === id);
     for (const child of children) {
       await deleteCollectionRecursive(child.id);
@@ -91,14 +102,14 @@ export async function removeCollection(id: string) {
   } catch (err) {
     console.error("Failed to delete collection:", err);
   }
-  const wsId = activeWorkspace();
-  if (wsId) await loadCollections(wsId);
+  const teamId = activeTeam();
+  if (teamId) await loadCollections(teamId);
 }
 
 export async function addRequest(collectionId: string, name: string, method: string = "GET") {
   await api.createRequest(collectionId, name, method, "");
-  const wsId = activeWorkspace();
-  if (wsId) await loadCollections(wsId);
+  const teamId = activeTeam();
+  if (teamId) await loadCollections(teamId);
 }
 
 export async function removeRequest(id: string) {
@@ -107,6 +118,6 @@ export async function removeRequest(id: string) {
   } catch (err) {
     console.error("Failed to delete request:", err);
   }
-  const wsId = activeWorkspace();
-  if (wsId) await loadCollections(wsId);
+  const teamId = activeTeam();
+  if (teamId) await loadCollections(teamId);
 }

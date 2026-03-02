@@ -1,6 +1,6 @@
 import { Component, For, Show, createSignal } from "solid-js";
 import { environments, activeEnvId, addEnvironment, saveEnvironment, removeEnvironment, switchEnvironment, loadEnvironments } from "../../stores/environments";
-import { activeWorkspace } from "../../stores/collections";
+import { activeTeam } from "../../stores/collections";
 import { KeyValueGrid } from "../shared/KeyValueGrid";
 import type { Environment, KeyValue } from "../../lib/api";
 
@@ -11,7 +11,7 @@ export const EnvManager: Component = () => {
 
   const handleCreate = async () => {
     const name = newEnvName().trim();
-    const wsId = activeWorkspace();
+    const wsId = activeTeam();
     if (!name || !wsId) return;
     await addEnvironment(wsId, name);
     setNewEnvName("");
@@ -55,7 +55,7 @@ export const EnvManager: Component = () => {
                 <span class="env-name">{env.name}</span>
                 <div class="env-actions">
                   <button class="icon-btn" onClick={(e) => { e.stopPropagation(); setEditingEnv({ ...env, variables: [...env.variables] }); }}>✏</button>
-                  <button class="icon-btn danger" onClick={(e) => { e.stopPropagation(); removeEnvironment(env.id, activeWorkspace()); }}>×</button>
+                  <button class="icon-btn danger" onClick={(e) => { e.stopPropagation(); removeEnvironment(env.id, activeTeam()); }}>×</button>
                 </div>
               </div>
             </div>

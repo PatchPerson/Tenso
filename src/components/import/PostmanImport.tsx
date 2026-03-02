@@ -1,6 +1,6 @@
 import { Component, Show, createSignal } from "solid-js";
 import { importPostman, type ImportedCollection, createCollection, createRequest, updateRequest, type SavedRequest } from "../../lib/api";
-import { loadCollections, activeWorkspace } from "../../stores/collections";
+import { loadCollections, activeTeam } from "../../stores/collections";
 
 interface Props {
   onClose: () => void;
@@ -24,10 +24,10 @@ export const PostmanImport: Component<Props> = (props) => {
 
   const persistImportedTree = async (
     imported: ImportedCollection,
-    workspaceId: string,
+    teamId: string,
     parentId: string | null
   ) => {
-    const collection = await createCollection(workspaceId, parentId, imported.name);
+    const collection = await createCollection(teamId, parentId, imported.name);
 
     for (const req of imported.requests) {
       const created = await createRequest(collection.id, req.name, req.method, req.url);
@@ -44,7 +44,7 @@ export const PostmanImport: Component<Props> = (props) => {
     }
 
     for (const child of imported.children) {
-      await persistImportedTree(child, workspaceId, collection.id);
+      await persistImportedTree(child, teamId, collection.id);
     }
   };
 
@@ -55,9 +55,9 @@ export const PostmanImport: Component<Props> = (props) => {
       return;
     }
 
-    const wsId = activeWorkspace();
-    if (!wsId) {
-      setError("No active workspace");
+    const teamId = activeTeam();
+    if (!teamId) {
+      setError("No active team");
       return;
     }
 
@@ -67,8 +67,8 @@ export const PostmanImport: Component<Props> = (props) => {
       const collection = await importPostman(content);
       setResult(collection);
 
-      await persistImportedTree(collection, wsId, null);
-      await loadCollections(wsId);
+      await persistImportedTree(collection, teamId, null);
+      await loadCollections(teamId);
 
       props.onClose();
     } catch (e) {

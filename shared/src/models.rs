@@ -1,11 +1,10 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Workspace {
+pub struct Team {
     pub id: String,
     pub name: String,
-    pub sync_url: Option<String>,
-    pub api_key: Option<String>,
+    pub convex_team_id: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -13,7 +12,7 @@ pub struct Workspace {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Collection {
     pub id: String,
-    pub workspace_id: String,
+    pub team_id: String,
     pub parent_id: Option<String>,
     pub name: String,
     pub sort_order: f64,
@@ -110,7 +109,7 @@ pub struct SavedRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Environment {
     pub id: String,
-    pub workspace_id: String,
+    pub team_id: String,
     pub name: String,
     pub variables: Vec<KeyValue>,
     pub created_at: String,
@@ -120,7 +119,7 @@ pub struct Environment {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HistoryEntry {
     pub id: String,
-    pub workspace_id: String,
+    pub team_id: String,
     pub method: String,
     pub url: String,
     pub status: u16,
@@ -135,7 +134,7 @@ pub struct HistoryEntry {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WebSocketConnection {
     pub id: String,
-    pub workspace_id: String,
+    pub team_id: String,
     pub name: String,
     pub url: String,
     pub headers: Vec<KeyValue>,

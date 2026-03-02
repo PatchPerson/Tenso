@@ -1,6 +1,6 @@
 # ReqLite
 
-High-performance API testing desktop app built with Tauri 2.0 and SolidJS. A lightweight, fast alternative to Postman with real-time team sync via a self-hosted server.
+High-performance API testing desktop app built with Tauri 2.0 and SolidJS. A lightweight, fast alternative to Postman with real-time team sync via Convex.
 
 ## Features
 
@@ -38,11 +38,11 @@ High-performance API testing desktop app built with Tauri 2.0 and SolidJS. A lig
 - **WebSocket Client** — Connect, send/receive messages, real-time message stream via Tauri events
 
 ### Team Sync
-- **Self-hosted sync server** — Single Rust binary or Docker container
-- **Event sourcing** — Full operation history with monotonic revisions
-- **Delta sync** — Only sends changes since last known revision on reconnect
-- **Field-level conflict detection** — Auto-merges non-overlapping edits, rejects overlapping ones with explicit conflict UX
-- **JWT + team key auth** — Simple authentication, no OAuth required
+- **Convex real-time sync** — Collections, requests, environments, and history sync across team members
+- **GitHub OAuth** — Sign in with GitHub, auto-created personal team
+- **Team invitations** — Invite by email, accept/decline/block in-app
+- **Last-write-wins** — Conflict resolution by `updatedAt` timestamp
+- **Offline-first** — App works fully without login; SQLite remains the local source of truth
 
 ### Performance
 - ~10MB binary (Tauri + rustls, no runtime deps)
@@ -64,8 +64,8 @@ High-performance API testing desktop app built with Tauri 2.0 and SolidJS. A lig
 | Local database | SQLite (rusqlite, bundled, WAL mode) |
 | HTTP client | reqwest (rustls-tls) |
 | JS scripting | Boa engine (Rust-native, sandboxed) |
-| Sync server | Axum + SQLite |
-| Sync protocol | WebSocket + event sourcing |
+| Backend / Sync | Convex (real-time queries, mutations, auth) |
+| Auth | GitHub OAuth via @convex-dev/auth |
 
 ---
 
@@ -105,10 +105,10 @@ sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file \
 cd reqlite
 
 # Install frontend dependencies
-npm install
+bun install
 
 # Run in development mode (hot-reload)
-npm run tauri dev
+bun run tauri dev
 ```
 
 This launches the Vite dev server for the frontend and compiles/runs the Tauri Rust backend. The app window opens automatically.
@@ -118,7 +118,7 @@ This launches the Vite dev server for the frontend and compiles/runs the Tauri R
 ## Building for Production
 
 ```bash
-npm run tauri build
+bun run tauri build
 ```
 
 Outputs:
@@ -127,61 +127,126 @@ Outputs:
 
 ---
 
-## Sync Server
+## Convex Backend Setup
 
-The sync server enables real-time collaboration between team members. It's optional — the app works fully offline without it.
+Convex powers auth, teams, and real-time sync. The app works fully offline without it — Convex is optional for collaboration features.
 
-### Option A: Run Directly
-
-```bash
-# Build
-cargo build --release -p reqlite-sync-server
-
-# Run
-JWT_SECRET=your-secret-here ./target/release/reqlite-sync-server
-```
-
-Server starts on `http://localhost:3000`.
-
-### Option B: Docker
+### 1. Install Convex CLI
 
 ```bash
-cd sync-server
-export JWT_SECRET=your-secret-here
-docker compose up -d
+bun add convex
 ```
 
-### Configuration
+### 2. Create a Convex project (first time only)
 
-All config is via environment variables:
+```bash
+bunx convex init
+```
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `HOST` | `0.0.0.0` | Bind address |
-| `PORT` | `3000` | Listen port |
-| `DATABASE_PATH` | `reqlite-sync.db` | SQLite file location |
-| `JWT_SECRET` | `reqlite-dev-secret-change-me` | **Change in production** |
-| `TEAM_KEY` | *(none)* | Optional shared team key for auth |
+Or link to the existing project — the deployment config is in `.env.local`:
 
-### API Endpoints
+```env
+CONVEX_DEPLOYMENT=dev:shiny-porcupine-825
+VITE_CONVEX_URL=https://shiny-porcupine-825.eu-west-1.convex.cloud
+VITE_CONVEX_SITE_URL=https://shiny-porcupine-825.eu-west-1.convex.site
+```
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/health` | Health check |
-| POST | `/api/auth/register` | Register new user |
-| POST | `/api/auth/login` | Login, returns JWT |
-| GET | `/api/workspaces` | List workspaces |
-| POST | `/api/workspaces` | Create workspace |
-| GET | `/api/workspaces/{id}/snapshot` | Get workspace snapshot |
-| GET | `/ws` | WebSocket sync endpoint |
+### 3. Set environment variables on the Convex deployment
 
-### Connecting the App
+```bash
+# GitHub OAuth App credentials
+bunx convex env set AUTH_GITHUB_ID <your-github-oauth-client-id>
+bunx convex env set AUTH_GITHUB_SECRET <your-github-oauth-client-secret>
 
-1. Open ReqLite
-2. Go to Settings
-3. Enter sync server URL (e.g. `http://localhost:3000`)
-4. Register or login with username/password
-5. Edits sync in real-time across all connected clients
+# Site URL (the Convex HTTP endpoint that serves the OAuth callback page)
+bunx convex env set SITE_URL <your-convex-site-url>
+
+# JWT keys (auto-generated)
+bunx @convex-dev/auth
+```
+
+The `bunx @convex-dev/auth` command auto-generates `JWT_PRIVATE_KEY` and `JWKS` env vars on your deployment.
+
+### 4. Create a GitHub OAuth App
+
+1. Go to [GitHub Developer Settings > OAuth Apps](https://github.com/settings/developers)
+2. Click "New OAuth App"
+3. Set:
+   - **Application name:** ReqLite (or anything)
+   - **Homepage URL:** `http://localhost:1420`
+   - **Authorization callback URL:** `<your-convex-site-url>/api/auth/callback/github`
+4. Copy the Client ID and Client Secret into the env vars above
+
+### 5. Deploy Convex functions
+
+```bash
+# Development (watches for changes, auto-deploys)
+bunx convex dev
+
+# One-shot deploy
+bunx convex dev --once
+
+# Production deploy
+bunx convex deploy
+```
+
+### 6. Verify deployment
+
+```bash
+# Check tables exist
+bunx convex data --table users
+
+# Check functions are deployed
+bunx convex functions
+```
+
+### Convex Architecture
+
+| What | Where |
+|------|-------|
+| Schema | `convex/schema.ts` |
+| Auth (GitHub OAuth) | `convex/auth.ts` |
+| User queries | `convex/users.ts` |
+| Teams, invites, members | `convex/teams.ts` |
+| Sync (push/pull) | `convex/sync.ts` |
+| Cron jobs (history prune, invite cleanup) | `convex/crons.ts` |
+| HTTP routes (OAuth callback page) | `convex/http.ts` |
+
+### Key Convex Functions
+
+| Function | Type | Description |
+|----------|------|-------------|
+| `users.getMe` | Query | Current user + their teams |
+| `teams.list` | Query | Teams for current user |
+| `teams.create` | Mutation | Create a new team |
+| `teams.invite` | Mutation | Invite user by email |
+| `teams.acceptInvite` | Mutation | Accept invite by token |
+| `teams.declineInvite` | Mutation | Decline invite |
+| `teams.blockInvite` | Mutation | Block future invites from team |
+| `teams.pendingInvites` | Query | Pending invites for current user |
+| `teams.listMembers` | Query | Members of a team |
+| `teams.removeMember` | Mutation | Remove member (owner only) |
+| `sync.push` | Mutation | Push local changes to Convex |
+| `sync.pull` | Query | Pull changes since timestamp (real-time subscription) |
+| `sync.pullInitial` | Query | Full data dump for first sync |
+
+### Auth Flow
+
+1. User clicks "Sign in with GitHub" (bottom-left of activity bar)
+2. App calls `auth.signIn({ provider: "github" })` → gets `{ redirect, verifier }`
+3. System browser opens GitHub OAuth
+4. After auth, Convex redirects to `SITE_URL?code=XXX`
+5. User copies the code from the browser page
+6. Pastes code into the app's modal → `auth.signIn({ provider: "github", params: { code }, verifier })`
+7. Token stored locally, sync starts automatically
+
+### Sync Flow
+
+- **Reads:** Real-time Convex subscription on `sync.pull(teamId, since)` → writes to local SQLite → UI updates
+- **Writes:** Local edit → SQLite save → debounced push to `sync.push` (2s delay)
+- **Conflicts:** Last-write-wins by `updatedAt` timestamp
+- **Offline:** App works normally; changes pushed when back online
+- **Deletes:** Tombstone table locally, soft-delete flag on Convex side
 
 ---
 
@@ -205,11 +270,19 @@ reqlite/
 ├── vite.config.ts                # Vite configuration
 ├── tsconfig.json                 # TypeScript configuration
 │
-├── shared/                       # Shared Rust types (client + server)
+├── convex/                       # Convex backend
+│   ├── schema.ts                 # Database schema
+│   ├── auth.ts                   # GitHub OAuth setup
+│   ├── auth.config.ts            # Auth provider config
+│   ├── users.ts                  # User queries
+│   ├── teams.ts                  # Teams, invites, members
+│   ├── sync.ts                   # Push/pull sync mutations/queries
+│   ├── crons.ts                  # Scheduled jobs
+│   └── http.ts                   # HTTP routes (OAuth callback)
+│
+├── shared/                       # Shared Rust types
 │   └── src/
-│       ├── models.rs             # Data model structs
-│       ├── protocol.rs           # Sync message types
-│       └── version.rs            # Vector clock / revision tracking
+│       └── models.rs             # Data model structs
 │
 ├── src-tauri/                    # Tauri Rust backend
 │   ├── tauri.conf.json           # Tauri app configuration
@@ -227,13 +300,12 @@ reqlite/
 │       │   ├── codegen.rs        # Code generation
 │       │   ├── scripting.rs      # JavaScript script execution
 │       │   ├── websocket.rs      # WebSocket connections
-│       │   └── sync.rs           # Sync server connection
+│       │   └── sync.rs           # Convex sync Tauri commands
 │       ├── http/                 # reqwest client utilities
 │       ├── websocket/            # WebSocket connection manager
 │       ├── scripting/            # Boa JS engine with pm.* API
 │       ├── import/               # cURL parser, OpenAPI importer
-│       ├── codegen/              # cURL, Python, JS code generators
-│       └── sync_client/          # Sync server WebSocket client
+│       └── codegen/              # cURL, Python, JS code generators
 │
 ├── src/                          # SolidJS frontend
 │   ├── index.html                # HTML entry with CSS variables
@@ -241,7 +313,11 @@ reqlite/
 │   ├── App.tsx                   # Root component
 │   ├── styles.css                # All component styles
 │   ├── lib/
-│   │   └── api.ts                # Typed Tauri invoke wrappers
+│   │   ├── api.ts                # Typed Tauri invoke wrappers
+│   │   ├── convex.ts             # ConvexClient wrapper
+│   │   ├── auth.ts               # Auth state (GitHub OAuth)
+│   │   ├── sync.ts               # SyncManager (subscribe + push)
+│   │   └── invites.ts            # Pending invite subscription
 │   ├── stores/
 │   │   ├── collections.ts        # Collection tree state
 │   │   ├── request.ts            # Tab and request state
@@ -257,18 +333,6 @@ reqlite/
 │   └── pages/
 │       ├── MainWorkspace.tsx      # Main app layout
 │       └── Settings.tsx           # Settings page
-│
-└── sync-server/                  # Self-hosted sync server
-    ├── Dockerfile
-    ├── docker-compose.yml
-    └── src/
-        ├── main.rs               # Axum server entry
-        ├── config.rs             # Environment config
-        ├── db/                   # SQLite pool, migrations, queries
-        ├── auth/                 # JWT + argon2 password auth
-        ├── api/                  # REST endpoints
-        └── sync/                 # WebSocket handler, SyncManager,
-                                  #   conflict detection, broadcaster
 ```
 
 ---
@@ -277,20 +341,9 @@ reqlite/
 
 SQLite with WAL mode. All IDs are ULIDs.
 
-**Client tables:** `workspaces`, `collections` (nested via `parent_id`), `requests` (headers/params/body as JSON), `environments` (variables as JSON array), `history` (append-only), `websocket_connections`, `sync_log`, `sync_cursors`
+**Local (SQLite):** `teams`, `collections` (nested via `parent_id`), `requests` (headers/params/body as JSON), `environments` (variables as JSON array), `history` (append-only), `websocket_connections`, `deleted_entities` (tombstones), `convex_sync_state`
 
-**Server tables:** `users`, `workspaces`, `workspace_members`, `operations` (event sourcing log with `revision INTEGER PRIMARY KEY AUTOINCREMENT`), `snapshots`
-
----
-
-## Sync Protocol
-
-1. Client connects via WebSocket, authenticates with JWT
-2. Client sends `Subscribe` with `workspace_id` and `last_revision`
-3. Server sends `Delta` with all operations since that revision
-4. On local edit: client writes optimistically, sends operation to server
-5. Server assigns monotonic revision, stores in operation log, broadcasts to all other clients
-6. **Conflict resolution:** Field-level — if two clients edit the same entity, server checks field overlap. No overlap = auto-merge. Overlap = reject with conflict, client fetches latest and retries.
+**Convex:** `users`, `teams`, `teamMembers`, `teamInvites`, `collections`, `requests`, `environments`, `history` — see `convex/schema.ts` for full schema
 
 ---
 

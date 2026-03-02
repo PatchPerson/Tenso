@@ -3,13 +3,13 @@ use reqlite_shared::models::*;
 use std::sync::Arc;
 
 #[tauri::command]
-pub async fn list_environments(state: tauri::State<'_, Arc<AppState>>, workspace_id: String) -> Result<Vec<Environment>, String> {
-    state.db.list_environments(&workspace_id).map_err(|e| e.to_string())
+pub async fn list_environments(state: tauri::State<'_, Arc<AppState>>, team_id: String) -> Result<Vec<Environment>, String> {
+    state.db.list_environments(&team_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub async fn create_environment(state: tauri::State<'_, Arc<AppState>>, workspace_id: String, name: String) -> Result<Environment, String> {
-    state.db.create_environment(&workspace_id, &name).map_err(|e| e.to_string())
+pub async fn create_environment(state: tauri::State<'_, Arc<AppState>>, team_id: String, name: String) -> Result<Environment, String> {
+    state.db.create_environment(&team_id, &name).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
