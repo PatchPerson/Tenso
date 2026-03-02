@@ -1,4 +1,4 @@
-import { Component, Show, For, createSignal, onMount } from "solid-js";
+import { Component, Show, For, createSignal, onMount, onCleanup } from "solid-js";
 import { Sidebar } from "../components/layout/Sidebar";
 import { TitleBar } from "../components/layout/TitleBar";
 import { TabBar } from "../components/layout/TabBar";
@@ -10,9 +10,13 @@ import { CurlImport } from "../components/import/CurlImport";
 import { PostmanImport } from "../components/import/PostmanImport";
 import { Settings } from "./Settings";
 import { tabs, activeTabId, getActiveTab, updateTab, executeRequest, createNewTab, saveRequest } from "../stores/request";
-import { activeWorkspace } from "../stores/collections";
+import { activeTeam, activeWorkspace } from "../stores/collections";
 import { loadEnvironments } from "../stores/environments";
 import { loadHistory, filteredHistory, historySearch, setHistorySearch, clearAllHistory } from "../stores/history";
+import { isAuthenticated, authUser, setAuthUser, signInWithGitHub, signOut, authLoading, type AuthUser } from "../lib/auth";
+import { pendingInvites, pendingInviteCount, acceptInvite, declineInvite, blockInvite } from "../lib/invites";
+import { getConvexClient } from "../lib/convex";
+import { api } from "../../convex/_generated/api";
 import type { Tab } from "../stores/request";
 
 type SidePanel = "collections" | "environments" | "history" | "settings";
@@ -39,11 +43,33 @@ export const MainWorkspace: Component = () => {
   const [sidebarWidth, setSidebarWidth] = createSignal(280);
   const [showCurlImport, setShowCurlImport] = createSignal(false);
   const [showPostmanImport, setShowPostmanImport] = createSignal(false);
+  const [showUserPopover, setShowUserPopover] = createSignal(false);
+  let popoverRef: HTMLDivElement | undefined;
+
+  const handleClickOutside = (e: MouseEvent) => {
+    if (showUserPopover() && popoverRef && !popoverRef.contains(e.target as Node) &&
+        !(e.target as HTMLElement).closest(".sidebar-nav-avatar-btn")) {
+      setShowUserPopover(false);
+    }
+  };
+  onMount(() => document.addEventListener("mousedown", handleClickOutside));
+  onCleanup(() => document.removeEventListener("mousedown", handleClickOutside));
+
+  const handleAcceptInvite = async (token: string) => {
+    try {
+      await acceptInvite(token);
+      // Refresh user data to pick up new team
+      const user = await getConvexClient().query(api.users.getMe, {});
+      if (user) setAuthUser(user as AuthUser);
+    } catch (err) {
+      console.error("Accept invite failed:", err);
+    }
+  };
   const [splitRatio, setSplitRatio] = createSignal(0.5);
   const [resizing, setResizing] = createSignal(false);
 
   onMount(async () => {
-    const wsId = activeWorkspace();
+    const wsId = activeTeam();
     if (wsId) {
       await loadEnvironments(wsId);
       await loadHistory(wsId);
@@ -57,7 +83,7 @@ export const MainWorkspace: Component = () => {
       if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
         e.preventDefault();
         const tab = getActiveTab();
-        if (tab) executeRequest(tab.id, activeWorkspace());
+        if (tab) executeRequest(tab.id, activeTeam());
       }
       if ((e.ctrlKey || e.metaKey) && e.key === "s") {
         e.preventDefault();
@@ -149,6 +175,86 @@ export const MainWorkspace: Component = () => {
             onClick={() => setSidePanel("settings")}
             title="Settings"
           ><SideNavIcon type="settings" active={sidePanel() === "settings"} /></button>
+
+          <Show
+            when={isAuthenticated()}
+            fallback={
+              <button
+                class="sidebar-nav-btn"
+                onClick={signInWithGitHub}
+                disabled={authLoading()}
+                title="Sign in with GitHub"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+                </svg>
+              </button>
+            }
+          >
+            <div class="sidebar-nav-avatar-wrap">
+              <button
+                class="sidebar-nav-avatar-btn"
+                onClick={() => setShowUserPopover(!showUserPopover())}
+                title={authUser()?.name || "Account"}
+              >
+                <Show
+                  when={authUser()?.image}
+                  fallback={
+                    <div class="sidebar-nav-avatar-fallback">
+                      {(authUser()?.name || "U")[0].toUpperCase()}
+                    </div>
+                  }
+                >
+                  <img
+                    class="sidebar-nav-avatar"
+                    src={authUser()!.image!}
+                    alt={authUser()?.name || "User"}
+                  />
+                </Show>
+                <Show when={pendingInviteCount() > 0}>
+                  <span class="invite-badge">{pendingInviteCount()}</span>
+                </Show>
+              </button>
+              <Show when={showUserPopover()}>
+                <div class="user-popover" ref={popoverRef}>
+                  <div class="user-popover-header">
+                    <Show when={authUser()?.image}>
+                      <img class="user-popover-avatar" src={authUser()!.image!} alt="" />
+                    </Show>
+                    <div class="user-popover-info">
+                      <span class="user-popover-name">{authUser()?.name || "User"}</span>
+                      <span class="user-popover-email">{authUser()?.email || ""}</span>
+                    </div>
+                  </div>
+                  <Show when={pendingInvites().length > 0}>
+                    <div class="user-popover-divider" />
+                    <div class="user-popover-invites">
+                      <span class="user-popover-section-label">Pending invitations</span>
+                      <For each={pendingInvites()}>
+                        {(invite) => (
+                          <div class="invite-row">
+                            <div class="invite-row-info">
+                              <span class="invite-team-name">{invite.teamName}</span>
+                              <span class="invite-from">from {invite.inviterName}</span>
+                            </div>
+                            <div class="invite-row-actions">
+                              <button class="invite-action-btn accept" onClick={() => handleAcceptInvite(invite.token)}>Accept</button>
+                              <button class="invite-action-btn decline" onClick={() => declineInvite(invite.token)}>Decline</button>
+                              <button class="invite-action-btn block" onClick={() => blockInvite(invite.token)} title="Block future invites">Block</button>
+                            </div>
+                          </div>
+                        )}
+                      </For>
+                    </div>
+                  </Show>
+                  <div class="user-popover-divider" />
+                  <button class="user-popover-action" onClick={() => { setShowUserPopover(false); signOut(); }}>
+                    Sign out
+                  </button>
+                </div>
+              </Show>
+            </div>
+          </Show>
         </div>
 
         <div class="sidebar-content" style={{ display: sidePanel() === "settings" ? "none" : undefined }}>

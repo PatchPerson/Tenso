@@ -6,13 +6,19 @@ const [historySearch, setHistorySearch] = createSignal("");
 
 export { history, setHistory, historySearch, setHistorySearch };
 
-export async function loadHistory(workspaceId: string) {
-  const entries = await api.listHistory(workspaceId, 200);
+const [historyRefreshTrigger, setHistoryRefreshTrigger] = createSignal(0);
+export { historyRefreshTrigger };
+export function triggerHistoryRefresh() {
+  setHistoryRefreshTrigger(historyRefreshTrigger() + 1);
+}
+
+export async function loadHistory(teamId: string) {
+  const entries = await api.listHistory(teamId, 200);
   setHistory(entries);
 }
 
-export async function clearAllHistory(workspaceId: string) {
-  await api.clearHistory(workspaceId);
+export async function clearAllHistory(teamId: string) {
+  await api.clearHistory(teamId);
   setHistory([]);
 }
 

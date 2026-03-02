@@ -4,13 +4,13 @@ use reqlite_shared::models::*;
 pub async fn import_openapi_spec(
     state: &AppState,
     spec_json: &str,
-    workspace_id: &str,
+    team_id: &str,
 ) -> Result<Vec<Collection>, String> {
     let spec: openapiv3::OpenAPI = serde_json::from_str(spec_json)
         .map_err(|e| format!("Invalid OpenAPI spec: {}", e))?;
 
     let title = spec.info.title.clone();
-    let root_collection = state.db.create_collection(workspace_id, None, &title)
+    let root_collection = state.db.create_collection(team_id, None, &title)
         .map_err(|e| e.to_string())?;
 
     let collections = vec![root_collection.clone()];
