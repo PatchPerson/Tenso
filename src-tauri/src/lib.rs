@@ -37,6 +37,32 @@ pub fn run() {
                 .expect("Failed to initialize app state");
 
             app.manage(Arc::new(state));
+
+            // Create window programmatically for platform-specific titlebar config
+            use tauri::{WebviewUrl, WebviewWindowBuilder};
+
+            let mut win_builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
+                .title("Tenso")
+                .inner_size(1280.0, 800.0)
+                .min_inner_size(900.0, 600.0)
+                .resizable(true);
+
+            #[cfg(target_os = "macos")]
+            {
+                use tauri::TitleBarStyle;
+                win_builder = win_builder
+                    .decorations(true)
+                    .title_bar_style(TitleBarStyle::Overlay)
+                    .hidden_title(true);
+            }
+
+            #[cfg(not(target_os = "macos"))]
+            {
+                win_builder = win_builder.decorations(false);
+            }
+
+            win_builder.build()?;
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
