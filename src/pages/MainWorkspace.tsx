@@ -11,6 +11,7 @@ import { CurlImport } from "../components/import/CurlImport";
 import { PostmanImport } from "../components/import/PostmanImport";
 import { Settings } from "./Settings";
 import { tabs, activeTabId, getActiveTab, updateTab, executeRequest, createNewTab, saveRequest, isWebSocketTab, connectWebSocket } from "../stores/request";
+import { kbd } from "../lib/platform";
 import { activeTeam, activeWorkspace } from "../stores/collections";
 import { loadEnvironments } from "../stores/environments";
 import { loadHistory, filteredHistory, historySearch, setHistorySearch, clearAllHistory } from "../stores/history";
@@ -175,7 +176,7 @@ export const MainWorkspace: Component = () => {
           <button
             class="sidebar-nav-btn"
             onClick={() => setShowCurlImport(true)}
-            title="Import cURL (Ctrl+I)"
+            title={`Import cURL (${kbd("Mod+I")})`}
           ><SideNavIcon type="import" active={false} /></button>
           <button
             class={`sidebar-nav-btn ${sidePanel() === "settings" ? "active" : ""}`}
@@ -342,18 +343,13 @@ export const MainWorkspace: Component = () => {
               when={activeTab()}
               fallback={
                 <div class="empty-workspace">
-                  <div class="empty-icon">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-                    </svg>
-                  </div>
                   <h2>Tenso</h2>
                   <p>High-Performance API Testing</p>
                   <div class="empty-shortcuts">
-                    <div class="shortcut"><kbd>Ctrl+N</kbd> New request</div>
-                    <div class="shortcut"><kbd>Ctrl+Enter</kbd> Send request</div>
-                    <div class="shortcut"><kbd>Ctrl+S</kbd> Save request</div>
-                    <div class="shortcut"><kbd>Ctrl+I</kbd> Import cURL</div>
+                    <div class="shortcut"><span class="shortcut-keys"><kbd>{kbd("Mod")}</kbd><kbd>N</kbd></span><span class="shortcut-label">New request</span></div>
+                    <div class="shortcut"><span class="shortcut-keys"><kbd>{kbd("Mod")}</kbd><kbd>Enter</kbd></span><span class="shortcut-label">Send request</span></div>
+                    <div class="shortcut"><span class="shortcut-keys"><kbd>{kbd("Mod")}</kbd><kbd>S</kbd></span><span class="shortcut-label">Save request</span></div>
+                    <div class="shortcut"><span class="shortcut-keys"><kbd>{kbd("Mod")}</kbd><kbd>I</kbd></span><span class="shortcut-label">Import cURL</span></div>
                   </div>
                   <button class="btn-primary" onClick={() => createNewTab()}>New Request</button>
                 </div>

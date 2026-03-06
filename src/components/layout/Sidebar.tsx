@@ -3,6 +3,7 @@ import { collections, addCollection, removeCollection, addRequest, removeRequest
 import { openRequestInTab } from "../../stores/request";
 import * as api from "../../lib/api";
 import { triggerPush } from "../../lib/sync";
+import { kbd } from "../../lib/platform";
 
 const METHOD_COLORS: Record<string, string> = {
   GET: "var(--method-get)",
@@ -156,23 +157,23 @@ const RequestContextMenu: Component<{
       <div class="dropdown req-context-menu" onClick={(e) => e.stopPropagation()}>
         <button class="dropdown-item" onClick={() => setRenaming(true)}>
           <span class="ctx-label">Rename</span>
-          <span class="ctx-shortcut">Ctrl+E</span>
+          <span class="ctx-shortcut">{kbd("Mod+E")}</span>
         </button>
         <button class="dropdown-item" onClick={handleCopyUrl}>
           <span class="ctx-label">Copy URL</span>
-          <span class="ctx-shortcut">Ctrl+C</span>
+          <span class="ctx-shortcut">{kbd("Mod+C")}</span>
         </button>
         <button class="dropdown-item" onClick={handleCopyCurl}>
           <span class="ctx-label">Copy as cURL</span>
         </button>
         <button class="dropdown-item" onClick={handleDuplicate}>
           <span class="ctx-label">Duplicate</span>
-          <span class="ctx-shortcut">Ctrl+D</span>
+          <span class="ctx-shortcut">{kbd("Mod+D")}</span>
         </button>
         <div class="dropdown-sep" />
         <button class="dropdown-item danger" onClick={handleDelete}>
           <span class="ctx-label">Delete</span>
-          <span class="ctx-shortcut">Del</span>
+          <span class="ctx-shortcut">{kbd("Del")}</span>
         </button>
       </div>
     </Show>

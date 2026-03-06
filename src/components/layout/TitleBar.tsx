@@ -1,7 +1,8 @@
 import { Component, Show, createSignal, onMount, onCleanup } from "solid-js";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { isMac } from "../../lib/platform";
 
-const isMacOS = navigator.platform.toUpperCase().includes("MAC");
+const isMacOS = isMac;
 
 export const TitleBar: Component = () => {
   const [maximized, setMaximized] = createSignal(false);

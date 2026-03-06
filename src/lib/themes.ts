@@ -223,6 +223,7 @@ export const themes: ThemePreset[] = [
       "--accent-hover": "#ffd4b0",
       "--accent-dim": "rgba(255, 199, 153, 0.10)",
       "--accent-glow": "rgba(255, 199, 153, 0.20)",
+      "--accent-fg": "#101010",
       "--success": "#6bdfb8",
       "--success-dim": "rgba(107, 223, 184, 0.12)",
       "--warning": "#ffc799",

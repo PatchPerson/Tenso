@@ -1,5 +1,6 @@
 import { Component, Show, For, createSignal } from "solid-js";
 import type { Tab } from "../../stores/request";
+import { kbd } from "../../lib/platform";
 import {
   addWsTemplate,
   removeWsTemplate,
@@ -200,7 +201,7 @@ export const WsMessagesTab: Component<Props> = (props) => {
           <div class="ws-composer-error">{jsonError()}</div>
         </Show>
         <div class="ws-composer-footer">
-          <span class="ws-composer-shortcut">Ctrl+Enter to send</span>
+          <span class="ws-composer-shortcut">{kbd("Mod+Enter")} to send</span>
           <button
             class="ws-composer-send"
             onClick={handleSend}
