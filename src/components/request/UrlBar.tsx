@@ -333,31 +333,6 @@ export const UrlBar: Component<Props> = (props) => {
 
   return (
     <div class="url-bar">
-      {/* Protocol type dropdown (HTTP / WS) */}
-      <div class="protocol-type-dropdown-container">
-        <button
-          class={`protocol-type-select ${props.protocolType}`}
-          onClick={() => setShowProtocolTypeMenu(!showProtocolTypeMenu())}
-        >
-          {props.protocolType.toUpperCase()}
-          <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ "margin-left": "6px" }}>
-            <path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-        </button>
-        <Show when={showProtocolTypeMenu()}>
-          <div class="dropdown protocol-type-menu">
-            {PROTOCOL_TYPES.map((pt) => (
-              <button
-                class={`dropdown-item protocol-type-menu-item ${props.protocolType === pt ? "active" : ""}`}
-                onClick={(e) => { e.stopPropagation(); props.onProtocolTypeChange(pt); setShowProtocolTypeMenu(false); }}
-              >
-                {pt.toUpperCase()}
-              </button>
-            ))}
-          </div>
-        </Show>
-      </div>
-
       {/* Method dropdown — only for HTTP */}
       <Show when={!isWs()}>
         <div class="method-dropdown-container">
@@ -384,6 +359,31 @@ export const UrlBar: Component<Props> = (props) => {
           </Show>
         </div>
       </Show>
+
+      {/* Protocol type dropdown (HTTP / WS) */}
+      <div class="protocol-type-dropdown-container">
+        <button
+          class={`protocol-type-select ${props.protocolType}`}
+          onClick={() => setShowProtocolTypeMenu(!showProtocolTypeMenu())}
+        >
+          {props.protocolType.toUpperCase()}
+          <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ "margin-left": "6px" }}>
+            <path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
+        <Show when={showProtocolTypeMenu()}>
+          <div class="dropdown protocol-type-menu">
+            {PROTOCOL_TYPES.map((pt) => (
+              <button
+                class={`dropdown-item protocol-type-menu-item ${props.protocolType === pt ? "active" : ""}`}
+                onClick={(e) => { e.stopPropagation(); props.onProtocolTypeChange(pt); setShowProtocolTypeMenu(false); }}
+              >
+                {pt.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        </Show>
+      </div>
 
       {/* URL input with lock icon */}
       <div class="url-input-wrapper">
