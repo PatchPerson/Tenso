@@ -2,36 +2,43 @@ import { Component, Show, createMemo, createSignal, onCleanup, onMount } from "s
 import { globalVars, saveGlobalVars, getGlobalVarNames } from "../../stores/globals";
 import { environments, activeEnvId, addEnvironment, saveEnvironment, switchEnvironment, loadEnvironments } from "../../stores/environments";
 import { activeWorkspace } from "../../stores/collections";
+import { detectProtocol } from "../../stores/request";
 import * as api from "../../lib/api";
 
 interface Props {
   method: string;
   url: string;
-  protocol: string;
+  protocolType: "http" | "ws";
+  secure: boolean;
   loading: boolean;
+  wsStatus: "disconnected" | "connecting" | "connected";
   onMethodChange: (method: string) => void;
   onUrlChange: (url: string) => void;
-  onProtocolChange: (protocol: string) => void;
+  onProtocolTypeChange: (type: "http" | "ws") => void;
+  onSecureChange: (secure: boolean) => void;
   onSend: () => void;
+  onConnect: () => void;
+  onDisconnect: () => void;
   onCurlPaste?: (parsed: { method: string; url: string; headers: api.KeyValue[]; params: api.KeyValue[]; body: api.RequestBody; auth: api.AuthConfig }) => void;
 }
 
 const METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
-const DEFAULT_PROTOCOLS = ["https://", "http://", "ws://", "wss://"];
+const PROTOCOL_TYPES: Array<"http" | "ws"> = ["http", "ws"];
 
 export const UrlBar: Component<Props> = (props) => {
   let inputRef: HTMLInputElement | undefined;
   const [tooltip, setTooltip] = createSignal<{ varName: string; x: number; y: number } | null>(null);
   const [editValue, setEditValue] = createSignal("");
-  const [showProtocolMenu, setShowProtocolMenu] = createSignal(false);
   const [showMethodMenu, setShowMethodMenu] = createSignal(false);
-  const [customProtocol, setCustomProtocol] = createSignal("");
+  const [showProtocolTypeMenu, setShowProtocolTypeMenu] = createSignal(false);
   const [tooltipLocked, setTooltipLocked] = createSignal(false);
   let closeTimer: ReturnType<typeof setTimeout> | null = null;
 
-  const urlHasProtocol = createMemo(() => {
-    const url = props.url;
-    return /^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\//.test(url);
+  const isWs = createMemo(() => props.protocolType === "ws");
+
+  const effectiveProtocol = createMemo(() => {
+    if (props.protocolType === "ws") return props.secure ? "WSS" : "WS";
+    return props.secure ? "HTTPS" : "HTTP";
   });
 
   const highlightedParts = createMemo(() => {
@@ -59,7 +66,6 @@ export const UrlBar: Component<Props> = (props) => {
 
   const hasVars = createMemo(() => highlightedParts().some(p => p.isVar));
 
-  // Compute variable character ranges for hover detection
   const varRanges = createMemo(() => {
     const url = props.url;
     const ranges: { start: number; end: number; varName: string }[] = [];
@@ -71,7 +77,6 @@ export const UrlBar: Component<Props> = (props) => {
     return ranges;
   });
 
-  // Measure character offset from mouse position on input
   let measureCanvas: HTMLCanvasElement | null = null;
   const getCharIndexAtX = (mouseX: number): number => {
     if (!inputRef) return -1;
@@ -86,7 +91,6 @@ export const UrlBar: Component<Props> = (props) => {
     ctx.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
 
     const text = props.url;
-    // Binary search for the character at position x
     let lo = 0, hi = text.length;
     while (lo < hi) {
       const mid = (lo + hi) >> 1;
@@ -115,7 +119,6 @@ export const UrlBar: Component<Props> = (props) => {
 
   const handleInputMouseMove = (e: MouseEvent) => {
     if (!hasVars()) return;
-    // If tooltip is locked (mouse is inside tooltip), don't change anything
     if (tooltipLocked()) return;
 
     const charIdx = getCharIndexAtX(e.clientX);
@@ -124,7 +127,6 @@ export const UrlBar: Component<Props> = (props) => {
     if (hoveredVar) {
       cancelClose();
       const currentTip = tooltip();
-      // Only update if different variable or no tooltip yet
       if (!currentTip || currentTip.varName !== hoveredVar.varName) {
         const info = getVarInfo(hoveredVar.varName);
         setEditValue(info.value || "");
@@ -132,7 +134,6 @@ export const UrlBar: Component<Props> = (props) => {
         setTooltip({ varName: hoveredVar.varName, x: e.clientX - 40, y: rect.bottom + 4 });
       }
     } else {
-      // Mouse moved off variable - use delayed close so user can reach the tooltip
       if (tooltip()) {
         scheduleClose();
       }
@@ -142,12 +143,10 @@ export const UrlBar: Component<Props> = (props) => {
   const handleInputMouseLeave = (e: MouseEvent) => {
     const related = e.relatedTarget as HTMLElement;
     if (related?.closest?.(".url-var-tooltip")) {
-      // Moving to tooltip - lock it open
       setTooltipLocked(true);
       cancelClose();
       return;
     }
-    // Leaving input but not to tooltip - delayed close
     if (tooltip()) {
       scheduleClose();
     }
@@ -171,7 +170,6 @@ export const UrlBar: Component<Props> = (props) => {
   };
 
   const getVarInfo = (varName: string): { value: string | null; source: string; sourceType: "G" | "E" | null } => {
-    // Check active environment first (higher priority)
     const envId = activeEnvId();
     if (envId) {
       const env = environments().find(e => e.id === envId);
@@ -180,14 +178,9 @@ export const UrlBar: Component<Props> = (props) => {
         if (ev) return { value: ev.value, source: env.name, sourceType: "E" };
       }
     }
-    // Then check globals
     const v = globalVars().find(v => v.key === varName && v.enabled);
     if (v) return { value: v.value, source: "Globals", sourceType: "G" };
     return { value: null, source: "", sourceType: null };
-  };
-
-  const getVarValue = (varName: string): string | null => {
-    return getVarInfo(varName).value;
   };
 
   const hideTooltip = () => {
@@ -200,7 +193,6 @@ export const UrlBar: Component<Props> = (props) => {
     const wsId = activeWorkspace();
     let envId = activeEnvId();
 
-    // If no active environment, create a default one
     if (!envId && wsId) {
       await addEnvironment(wsId, "Default");
       await loadEnvironments(wsId);
@@ -212,7 +204,6 @@ export const UrlBar: Component<Props> = (props) => {
       }
     }
 
-    // Save to active environment
     if (envId) {
       const env = environments().find(e => e.id === envId);
       if (env) {
@@ -227,7 +218,6 @@ export const UrlBar: Component<Props> = (props) => {
       }
     }
 
-    // Also save to global vars as fallback
     const gvars = [...globalVars()];
     const gidx = gvars.findIndex(v => v.key === varName);
     if (gidx >= 0) {
@@ -241,12 +231,6 @@ export const UrlBar: Component<Props> = (props) => {
   const closeTooltipOnClick = (e: MouseEvent) => {
     if (!(e.target as HTMLElement).closest(".url-var-tooltip")) {
       setTooltip(null);
-    }
-  };
-
-  const closeProtocolOnClick = (e: MouseEvent) => {
-    if (!(e.target as HTMLElement).closest(".protocol-pill-container")) {
-      setShowProtocolMenu(false);
     }
   };
 
@@ -275,13 +259,13 @@ export const UrlBar: Component<Props> = (props) => {
   const handlePaste = async (e: ClipboardEvent) => {
     const text = e.clipboardData?.getData("text")?.trim();
     if (!text) return;
+
     // Detect cURL commands
     if (/^curl\s/i.test(text) && props.onCurlPaste) {
       e.preventDefault();
       try {
         const parsed = await api.importCurl(text);
         const { baseUrl, params: queryParams } = extractQueryParams(parsed.url);
-        // Merge query params with any params from the backend parse
         const allParams = [...(parsed.params || []), ...queryParams];
         props.onCurlPaste({
           method: parsed.method,
@@ -292,9 +276,18 @@ export const UrlBar: Component<Props> = (props) => {
           auth: parsed.auth,
         });
       } catch {
-        // Not a valid cURL - just paste as normal text
         props.onUrlChange(text);
       }
+      return;
+    }
+
+    // Auto-detect protocol from pasted URL
+    const detected = detectProtocol(text);
+    if (detected) {
+      e.preventDefault();
+      props.onProtocolTypeChange(detected.protocolType);
+      props.onSecureChange(detected.secure);
+      props.onUrlChange(detected.bareUrl);
     }
   };
 
@@ -304,86 +297,95 @@ export const UrlBar: Component<Props> = (props) => {
     }
   };
 
+  const closeProtocolTypeOnClick = (e: MouseEvent) => {
+    if (!(e.target as HTMLElement).closest(".protocol-type-dropdown-container")) {
+      setShowProtocolTypeMenu(false);
+    }
+  };
+
+  const handleAction = () => {
+    if (isWs()) {
+      if (props.wsStatus === "connected") {
+        props.onDisconnect();
+      } else if (props.wsStatus === "disconnected") {
+        props.onConnect();
+      }
+    } else {
+      props.onSend();
+    }
+  };
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === "Enter") handleAction();
+  };
+
   onMount(() => {
     document.addEventListener("mousedown", closeTooltipOnClick);
-    document.addEventListener("click", closeProtocolOnClick);
     document.addEventListener("click", closeMethodOnClick);
+    document.addEventListener("click", closeProtocolTypeOnClick);
     onCleanup(() => {
       document.removeEventListener("mousedown", closeTooltipOnClick);
-      document.removeEventListener("click", closeProtocolOnClick);
       document.removeEventListener("click", closeMethodOnClick);
+      document.removeEventListener("click", closeProtocolTypeOnClick);
       if (closeTimer) clearTimeout(closeTimer);
     });
   });
 
   return (
     <div class="url-bar">
-      <div class="method-dropdown-container">
+      {/* Protocol type dropdown (HTTP / WS) */}
+      <div class="protocol-type-dropdown-container">
         <button
-          class={`method-select ${props.method.toLowerCase()}`}
-          onClick={() => setShowMethodMenu(!showMethodMenu())}
+          class={`protocol-type-select ${props.protocolType}`}
+          onClick={() => setShowProtocolTypeMenu(!showProtocolTypeMenu())}
         >
-          {props.method}
+          {props.protocolType.toUpperCase()}
           <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ "margin-left": "6px" }}>
             <path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
         </button>
-        <Show when={showMethodMenu()}>
-          <div class="dropdown method-menu">
-            {METHODS.map((m) => (
+        <Show when={showProtocolTypeMenu()}>
+          <div class="dropdown protocol-type-menu">
+            {PROTOCOL_TYPES.map((pt) => (
               <button
-                class={`dropdown-item method-menu-item ${props.method === m ? "active" : ""} ${m.toLowerCase()}`}
-                onClick={(e) => { e.stopPropagation(); props.onMethodChange(m); setShowMethodMenu(false); }}
+                class={`dropdown-item protocol-type-menu-item ${props.protocolType === pt ? "active" : ""}`}
+                onClick={(e) => { e.stopPropagation(); props.onProtocolTypeChange(pt); setShowProtocolTypeMenu(false); }}
               >
-                {m}
+                {pt.toUpperCase()}
               </button>
             ))}
           </div>
         </Show>
       </div>
 
-      <Show when={!urlHasProtocol()}>
-        <div class="protocol-pill-container">
+      {/* Method dropdown — only for HTTP */}
+      <Show when={!isWs()}>
+        <div class="method-dropdown-container">
           <button
-            class="protocol-pill"
-            onClick={() => setShowProtocolMenu(!showProtocolMenu())}
-            title="Protocol"
+            class={`method-select ${props.method.toLowerCase()}`}
+            onClick={() => setShowMethodMenu(!showMethodMenu())}
           >
-            {props.protocol || "http://"}
+            {props.method}
+            <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ "margin-left": "6px" }}>
+              <path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
           </button>
-          <Show when={showProtocolMenu()}>
-            <div class="dropdown protocol-menu">
-              {DEFAULT_PROTOCOLS.map(p => (
+          <Show when={showMethodMenu()}>
+            <div class="dropdown method-menu">
+              {METHODS.map((m) => (
                 <button
-                  class={`dropdown-item protocol-menu-item ${props.protocol === p ? "active" : ""}`}
-                  onClick={(e) => { e.stopPropagation(); props.onProtocolChange(p); setShowProtocolMenu(false); }}
+                  class={`dropdown-item method-menu-item ${props.method === m ? "active" : ""} ${m.toLowerCase()}`}
+                  onClick={(e) => { e.stopPropagation(); props.onMethodChange(m); setShowMethodMenu(false); }}
                 >
-                  {p}
+                  {m}
                 </button>
               ))}
-              <div class="dropdown-sep" />
-              <div class="protocol-custom-row">
-                <input
-                  class="protocol-custom-input"
-                  placeholder="custom://"
-                  value={customProtocol()}
-                  onInput={(e) => setCustomProtocol(e.currentTarget.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && customProtocol().trim()) {
-                      let proto = customProtocol().trim();
-                      if (!proto.endsWith("://")) proto += "://";
-                      props.onProtocolChange(proto);
-                      setCustomProtocol("");
-                      setShowProtocolMenu(false);
-                    }
-                  }}
-                />
-              </div>
             </div>
           </Show>
         </div>
       </Show>
 
+      {/* URL input with lock icon */}
       <div class="url-input-wrapper">
         {hasVars() && (
           <div class="url-highlight-overlay" aria-hidden="true">
@@ -394,54 +396,98 @@ export const UrlBar: Component<Props> = (props) => {
             )}
           </div>
         )}
+        <button
+          class={`url-lock-icon ${props.secure ? "locked" : "unlocked"}`}
+          onClick={() => props.onSecureChange(!props.secure)}
+          title={effectiveProtocol()}
+        >
+          <Show when={props.secure} fallback={
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+            </svg>
+          }>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+          </Show>
+        </button>
         <input
           ref={inputRef}
-          class={`url-input ${hasVars() ? "has-vars" : ""}`}
+          class={`url-input has-lock ${hasVars() ? "has-vars" : ""}`}
           type="text"
           spellcheck={false}
           autocomplete="off"
           autocorrect="off"
           autocapitalize="off"
-          placeholder="Enter request URL..."
+          placeholder={isWs() ? "Enter WebSocket URL..." : "Enter request URL..."}
           value={props.url}
           onInput={(e) => props.onUrlChange(e.currentTarget.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") props.onSend(); }}
+          onKeyDown={handleKeyDown}
           onPaste={handlePaste}
           onScroll={syncScroll}
           onMouseMove={handleInputMouseMove}
           onMouseLeave={handleInputMouseLeave}
         />
       </div>
-      <button
-        class={`send-btn ${props.loading ? "loading" : ""}`}
-        onClick={(e) => {
-          const btn = e.currentTarget;
-          btn.classList.remove("clicked");
-          void btn.offsetWidth;
-          btn.classList.add("clicked");
-          props.onSend();
-        }}
-        disabled={props.loading}
-      >
-        {props.loading ? (
-          <>
+
+      {/* Action button */}
+      <Show when={isWs()} fallback={
+        <button
+          class={`send-btn ${props.loading ? "loading" : ""}`}
+          onClick={(e) => {
+            const btn = e.currentTarget;
+            btn.classList.remove("clicked");
+            void btn.offsetWidth;
+            btn.classList.add("clicked");
+            props.onSend();
+          }}
+          disabled={props.loading}
+        >
+          {props.loading ? (
+            <>
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ animation: "spin 0.7s linear infinite" }}>
+                <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="2" opacity="0.3" />
+                <path d="M14 8A6 6 0 0 0 8 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              </svg>
+              Sending
+            </>
+          ) : (
+            <>
+              Send
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style={{ "margin-left": "4px" }}>
+                <path d="M22 2L11 13" />
+                <path d="M22 2L15 22L11 13L2 9L22 2Z" />
+              </svg>
+            </>
+          )}
+        </button>
+      }>
+        {/* WS action buttons */}
+        <Show when={props.wsStatus === "connecting"}>
+          <button class="send-btn ws-connecting" disabled>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ animation: "spin 0.7s linear infinite" }}>
               <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="2" opacity="0.3" />
               <path d="M14 8A6 6 0 0 0 8 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
             </svg>
-            Sending
-          </>
-        ) : (
-          <>
-            Send
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style={{ "margin-left": "4px" }}>
-              <path d="M22 2L11 13" />
-              <path d="M22 2L15 22L11 13L2 9L22 2Z" />
-            </svg>
-          </>
-        )}
-      </button>
+            Connecting
+          </button>
+        </Show>
+        <Show when={props.wsStatus === "disconnected"}>
+          <button class="send-btn ws-connect" onClick={props.onConnect}>
+            Connect
+          </button>
+        </Show>
+        <Show when={props.wsStatus === "connected"}>
+          <button class="send-btn ws-disconnect" onClick={props.onDisconnect}>
+            <span class="ws-connected-dot" />
+            Disconnect
+          </button>
+        </Show>
+      </Show>
 
+      {/* Variable tooltip */}
       <Show when={tooltip()}>
         {(tip) => {
           const info = () => getVarInfo(tip().varName);
