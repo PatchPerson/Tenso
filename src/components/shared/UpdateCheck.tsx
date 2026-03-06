@@ -1,12 +1,14 @@
-import { Component, Show, createSignal, onMount } from "solid-js";
+import { Component, Show, createSignal, onCleanup, onMount } from "solid-js";
 import { check } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
+
+const CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 hours
 
 export const UpdateCheck: Component = () => {
   const [update, setUpdate] = createSignal<{ version: string; body: string } | null>(null);
   const [installing, setInstalling] = createSignal(false);
 
-  onMount(async () => {
+  const checkForUpdate = async () => {
     try {
       const result = await check();
       if (result?.available) {
@@ -15,6 +17,12 @@ export const UpdateCheck: Component = () => {
     } catch (e) {
       console.error("Update check failed:", e);
     }
+  };
+
+  onMount(() => {
+    checkForUpdate();
+    const interval = setInterval(checkForUpdate, CHECK_INTERVAL_MS);
+    onCleanup(() => clearInterval(interval));
   });
 
   const install = async () => {
