@@ -12,15 +12,15 @@
     "prepare": "git config core.hooksPath .githooks"
   },
   "dependencies": {
-    "@auth/core": "^0.37.0",
-    "@codemirror/autocomplete": "^6.0.0",
-    "@codemirror/lang-javascript": "^6.0.0",
+    "@auth/core": "^0.41.1",
+    "@codemirror/autocomplete": "^6.20.1",
+    "@codemirror/lang-javascript": "^6.2.5",
     "@codemirror/lang-json": "^6.0.0",
     "@codemirror/state": "^6.0.0",
     "@codemirror/theme-one-dark": "^6.0.0",
-    "@codemirror/view": "^6.0.0",
+    "@codemirror/view": "^6.39.16",
     "@convex-dev/auth": "^0.0.91",
-    "@tanstack/solid-virtual": "^3.0.0",
+    "@tanstack/solid-virtual": "^3.13.21",
     "@tauri-apps/api": "^2.0.0",
     "@tauri-apps/plugin-deep-link": "^2.4.7",
     "@tauri-apps/plugin-process": "^2.3.1",
@@ -30,7 +30,7 @@
     "solid-js": "^1.9.0"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.0.0",
+    "@tauri-apps/cli": "^2.10.1",
     "typescript": "^5.5.0",
     "vite": "^7.3.1",
     "vite-plugin-solid": "^2.10.0"
