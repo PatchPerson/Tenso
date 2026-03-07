@@ -97,6 +97,9 @@ export const RequestPanel: Component<Props> = (props) => {
         onConnect={handleConnect}
         onDisconnect={handleDisconnect}
         onCurlPaste={(parsed) => {
+          if (parsed.protocolType !== props.tab.protocolType) {
+            switchProtocolType(props.tab.id, parsed.protocolType);
+          }
           props.onUpdate({
             method: parsed.method,
             url: parsed.url,
@@ -104,6 +107,7 @@ export const RequestPanel: Component<Props> = (props) => {
             params: parsed.params,
             body: parsed.body,
             auth: parsed.auth,
+            secure: parsed.secure,
             name: `${parsed.method} ${parsed.url}`,
           });
         }}

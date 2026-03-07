@@ -19,7 +19,7 @@ interface Props {
   onSend: () => void;
   onConnect: () => void;
   onDisconnect: () => void;
-  onCurlPaste?: (parsed: { method: string; url: string; headers: api.KeyValue[]; params: api.KeyValue[]; body: api.RequestBody; auth: api.AuthConfig }) => void;
+  onCurlPaste?: (parsed: { method: string; url: string; headers: api.KeyValue[]; params: api.KeyValue[]; body: api.RequestBody; auth: api.AuthConfig; protocolType: "http" | "ws"; secure: boolean }) => void;
 }
 
 const METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
@@ -265,15 +265,20 @@ export const UrlBar: Component<Props> = (props) => {
       e.preventDefault();
       try {
         const parsed = await api.importCurl(text);
-        const { baseUrl, params: queryParams } = extractQueryParams(parsed.url);
+        // Detect protocol from the parsed URL
+        const proto = detectProtocol(parsed.url);
+        const urlWithoutProto = proto ? proto.bareUrl : parsed.url;
+        const { baseUrl, params: queryParams } = extractQueryParams(urlWithoutProto);
         const allParams = [...(parsed.params || []), ...queryParams];
         props.onCurlPaste({
           method: parsed.method,
-          url: queryParams.length > 0 ? baseUrl : parsed.url,
+          url: queryParams.length > 0 ? baseUrl : urlWithoutProto,
           headers: parsed.headers,
           params: allParams,
           body: parsed.body,
           auth: parsed.auth,
+          protocolType: proto?.protocolType ?? props.protocolType,
+          secure: proto?.secure ?? props.secure,
         });
       } catch {
         props.onUrlChange(text);
