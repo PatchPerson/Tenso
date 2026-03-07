@@ -39,8 +39,9 @@ pub async fn send_request(
 
     let resolved_url = resolve(&url);
 
-    // Build URL with query params
+    // Build URL with query params (strip any existing query string since params array is the source of truth)
     let mut url_with_params = reqwest::Url::parse(&resolved_url).map_err(|e| format!("Invalid URL: {}", e))?;
+    url_with_params.set_query(None);
     for p in &params {
         if p.enabled {
             url_with_params.query_pairs_mut().append_pair(&resolve(&p.key), &resolve(&p.value));
