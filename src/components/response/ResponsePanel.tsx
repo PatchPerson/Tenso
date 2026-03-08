@@ -272,7 +272,7 @@ const JsonTreeView: Component<{ data: unknown }> = (props) => {
                 {line.indent > 0 && (
                   <span class="json-indent-guides" style={{ width: `${line.indent * INDENT_WIDTH}px` }}>
                     {Array.from({ length: line.indent }, (_, i) => (
-                      <span class="json-indent-guide" style={{ left: `${i * INDENT_WIDTH + 9}px` }} />
+                      <span class="json-indent-guide" style={{ left: `${i * INDENT_WIDTH + 4}px` }} />
                     ))}
                   </span>
                 )}

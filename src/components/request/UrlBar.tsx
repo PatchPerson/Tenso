@@ -46,7 +46,15 @@ export const UrlBar: Component<Props> = (props) => {
     if (!url) return [];
 
     const parts: { text: string; isVar: boolean; resolved: boolean; varName: string }[] = [];
-    const varNames = getGlobalVarNames();
+    const globalNames = getGlobalVarNames();
+    const envId = activeEnvId();
+    const envNames = new Set<string>();
+    if (envId) {
+      const env = environments().find(e => e.id === envId);
+      if (env) {
+        env.variables.filter(v => v.enabled && v.key).forEach(v => envNames.add(v.key));
+      }
+    }
     let lastIdx = 0;
 
     const regex = /\{\{(\w+)\}\}/g;
@@ -55,7 +63,7 @@ export const UrlBar: Component<Props> = (props) => {
       if (match.index > lastIdx) {
         parts.push({ text: url.slice(lastIdx, match.index), isVar: false, resolved: false, varName: "" });
       }
-      parts.push({ text: match[0], isVar: true, resolved: varNames.has(match[1]), varName: match[1] });
+      parts.push({ text: match[0], isVar: true, resolved: globalNames.has(match[1]) || envNames.has(match[1]), varName: match[1] });
       lastIdx = regex.lastIndex;
     }
     if (lastIdx < url.length) {
@@ -503,10 +511,14 @@ export const UrlBar: Component<Props> = (props) => {
               onMouseEnter={handleTooltipMouseEnter}
               onMouseLeave={handleTooltipMouseLeave}
             >
-              {info().value !== null ? (
-                <div class="url-var-tooltip-resolved">{info().value}</div>
-              ) : (
-                <div class="url-var-tooltip-empty">Unresolved variable</div>
+              <div class="url-var-tooltip-resolved">{tip().varName}</div>
+              {info().sourceType !== null && (
+                <div class="url-var-tooltip-footer">
+                  <span class="url-var-tooltip-source">
+                    <span class="url-var-tooltip-source-badge">{info().sourceType}</span>
+                    {info().source}
+                  </span>
+                </div>
               )}
               <div class="url-var-tooltip-input-row">
                 <input
@@ -523,13 +535,8 @@ export const UrlBar: Component<Props> = (props) => {
                   }}
                 />
               </div>
-              {info().sourceType !== null && (
-                <div class="url-var-tooltip-footer">
-                  <span class="url-var-tooltip-source">
-                    <span class="url-var-tooltip-source-badge">{info().sourceType}</span>
-                    {info().source}
-                  </span>
-                </div>
+              {info().value === null && (
+                <div class="url-var-tooltip-empty">Unresolved variable</div>
               )}
             </div>
           );

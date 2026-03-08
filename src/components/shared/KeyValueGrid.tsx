@@ -122,7 +122,7 @@ export const KeyValueGrid: Component<Props> = (props) => {
             </label>
             <div class="kv-cell">
               <input
-                class="kv-input"
+                class={`kv-input ${item.key ? "kv-key-filled" : ""}`}
                 placeholder={props.placeholder?.key || "Key"}
                 value={item.key}
                 onInput={(e) => {
