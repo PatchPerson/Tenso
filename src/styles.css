@@ -491,7 +491,6 @@ body {
 
 .tab-list {
   display: flex;
-  flex: 1;
   overflow-x: auto;
   overflow-y: hidden;
 }
@@ -2230,24 +2229,42 @@ kbd {
 }
 
 /* ===== TAB SCROLL BUTTONS ===== */
-.tab-scroll-btn {
-  width: 28px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: all var(--transition-fast);
-  border-radius: var(--radius-sm);
+/* Tab list edge fades */
+.tab-list-wrapper {
+  position: relative;
+  flex: 1;
+  min-width: 0;
 }
 
-.tab-scroll-btn:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
+.tab-list-wrapper::before,
+.tab-list-wrapper::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 32px;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.tab-list-wrapper::before {
+  left: 0;
+  background: linear-gradient(to right, var(--bg-secondary), transparent);
+}
+
+.tab-list-wrapper::after {
+  right: 0;
+  background: linear-gradient(to left, var(--bg-secondary), transparent);
+}
+
+.tab-list-wrapper.fade-left::before {
+  opacity: 1;
+}
+
+.tab-list-wrapper.fade-right::after {
+  opacity: 1;
 }
 
 /* ===== GLOBAL DROPDOWN STYLE ===== */

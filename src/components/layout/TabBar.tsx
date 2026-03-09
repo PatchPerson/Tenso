@@ -68,8 +68,14 @@ export const TabBar: Component = () => {
   onMount(() => {
     checkOverflow();
     const observer = new ResizeObserver(checkOverflow);
-    if (tabListRef) observer.observe(tabListRef);
-    onCleanup(() => observer.disconnect());
+    if (tabListRef) {
+      observer.observe(tabListRef);
+      tabListRef.addEventListener("wheel", handleWheel, { passive: false });
+    }
+    onCleanup(() => {
+      observer.disconnect();
+      tabListRef?.removeEventListener("wheel", handleWheel);
+    });
   });
 
   createEffect(() => {
@@ -77,15 +83,13 @@ export const TabBar: Component = () => {
     setTimeout(checkOverflow, 0);
   });
 
-  const scrollLeft = () => {
-    tabListRef?.scrollBy({ left: -200, behavior: "smooth" });
-  };
-
-  const scrollRight = () => {
-    tabListRef?.scrollBy({ left: 200, behavior: "smooth" });
-  };
-
   const handleScroll = () => checkOverflow();
+
+  const handleWheel = (e: WheelEvent) => {
+    if (!tabListRef || e.deltaX) return;
+    e.preventDefault();
+    tabListRef.scrollLeft += e.deltaY;
+  };
 
   const toggleMethodCollapse = (method: string) => {
     setCollapsedMethods(prev => {
@@ -164,15 +168,12 @@ export const TabBar: Component = () => {
 
   return (
     <div class="tab-bar">
-      <Show when={canScrollLeft()}>
-        <button class="tab-scroll-btn" onClick={scrollLeft} title="Scroll left">
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="8 2 4 6 8 10" />
-          </svg>
-        </button>
-      </Show>
-
-      <div class="tab-list" ref={tabListRef} onScroll={handleScroll}>
+      <div class={`tab-list-wrapper${canScrollLeft() ? " fade-left" : ""}${canScrollRight() ? " fade-right" : ""}`}>
+      <div
+        class="tab-list"
+        ref={tabListRef}
+        onScroll={handleScroll}
+      >
         <For each={groupedTabs()}>
           {(group) => (
             <>
@@ -226,14 +227,7 @@ export const TabBar: Component = () => {
           )}
         </For>
       </div>
-
-      <Show when={canScrollRight()}>
-        <button class="tab-scroll-btn" onClick={scrollRight} title="Scroll right">
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="4 2 8 6 4 10" />
-          </svg>
-        </button>
-      </Show>
+      </div>
 
       <button class="tab-new" onClick={() => createNewTab()} title="New tab">
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5">
