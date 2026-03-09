@@ -646,7 +646,6 @@ body {
   color: var(--text-muted);
   width: 100%;
   flex-shrink: 0;
-  font-weight: 900;
 }
 
 .status-left,
@@ -1671,7 +1670,6 @@ body {
 .empty-workspace h2 {
   color: var(--text-primary);
   font-size: 22px;
-  font-weight: 900;
   letter-spacing: -0.5px;
   margin: 0;
 }
@@ -1852,7 +1850,6 @@ kbd {
 .env-name {
   flex: 1;
   color: var(--text-secondary);
-  font-weight: 900;
 }
 
 .env-item.active .env-name {
@@ -2027,7 +2024,6 @@ kbd {
   background: transparent;
   color: var(--text-secondary);
   font-size: 12px;
-  font-weight: 900;
   text-align: left;
   cursor: pointer;
   border-radius: var(--radius-sm);
@@ -2275,7 +2271,6 @@ kbd {
   background: transparent;
   color: var(--text-secondary);
   font-size: 12px;
-  font-weight: 900;
   text-align: left;
   cursor: pointer;
   border-radius: 2px;
