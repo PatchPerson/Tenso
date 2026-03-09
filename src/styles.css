@@ -13,6 +13,13 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+input, textarea, [contenteditable="true"], .response-body, .response-headers-raw {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 ::-webkit-scrollbar { width: 5px; height: 5px; }
@@ -447,9 +454,9 @@ body {
 }
 
 .icon-btn.small {
-  width: 20px;
-  height: 20px;
-  font-size: 12px;
+  width: 24px;
+  height: 24px;
+  font-size: 14px;
 }
 
 .icon-btn.active {
@@ -1485,7 +1492,7 @@ body {
 .response-status {
   font-weight: 700;
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 14px;
   padding: 2px 8px;
   border-radius: var(--radius-sm);
 }
@@ -1508,14 +1515,15 @@ body {
 .response-timing {
   color: var(--text-secondary);
   font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .response-size {
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .response-tabs {
@@ -1533,6 +1541,97 @@ body {
   gap: 4px;
 }
 
+.lang-dropdown-container {
+  position: relative;
+}
+
+.lang-dropdown-trigger {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-family: var(--font-sans);
+  padding: 2px 6px;
+  height: 24px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.lang-dropdown-trigger:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.lang-dropdown-label {
+  white-space: nowrap;
+}
+
+.lang-dropdown-chevron {
+  transition: transform 150ms ease;
+  flex-shrink: 0;
+}
+
+.lang-dropdown-chevron.open {
+  transform: rotate(180deg);
+}
+
+.lang-dropdown-menu {
+  right: 0;
+  left: auto;
+  min-width: 140px;
+  padding: 4px;
+  margin-top: 4px;
+}
+
+.lang-dropdown-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.lang-dropdown-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.lang-dropdown-item.selected {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Shiki syntax highlighting CSS variable theme */
+.syntax-highlight {
+  --shiki-foreground: var(--text-primary);
+  --shiki-background: transparent;
+  --shiki-token-constant: var(--accent);
+  --shiki-token-string: var(--success);
+  --shiki-token-comment: var(--text-dim);
+  --shiki-token-keyword: var(--accent);
+  --shiki-token-parameter: var(--text-secondary);
+  --shiki-token-function: var(--accent);
+  --shiki-token-string-expression: var(--success);
+  --shiki-token-punctuation: var(--text-muted);
+  --shiki-token-link: var(--accent);
+}
+
+.syntax-highlight code {
+  display: block;
+}
+
 .response-content {
   flex: 1;
   overflow: auto;
@@ -1540,7 +1639,8 @@ body {
 
 .response-body {
   padding: 14px 16px;
-  font-size: 12px;
+  font-size: 18px;
+  font-weight: 600;
   line-height: 1.6;
   overflow-x: auto;
   white-space: pre;
