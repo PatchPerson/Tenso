@@ -217,3 +217,54 @@ jobs:
             artifacts/*.AppImage
             artifacts/*.deb
             artifacts/latest.json
+
+      - name: Update Homebrew cask
+        if: env.HOMEBREW_TAP_TOKEN != ''
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          DMG_FILE=$(ls artifacts/*.dmg 2>/dev/null | head -1)
+
+          if [ -z "$DMG_FILE" ]; then
+            echo "No DMG found, skipping cask update"
+            exit 0
+          fi
+
+          SHA256=$(sha256sum "$DMG_FILE" | cut -d' ' -f1)
+
+          git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/PatchPerson/homebrew-tenso.git" tap
+
+          mkdir -p tap/Casks
+          cat > tap/Casks/tenso.rb << 'CASK'
+          cask "tenso" do
+            version "VERSION_PLACEHOLDER"
+            sha256 "SHA256_PLACEHOLDER"
+
+            url "https://github.com/PatchPerson/Tenso/releases/download/v#{version}/Tenso_#{version}_aarch64.dmg"
+            name "Tenso"
+            desc "API client for developers"
+            homepage "https://github.com/PatchPerson/Tenso"
+
+            depends_on arch: :arm64
+
+            app "Tenso.app"
+
+            zap trash: [
+              "~/Library/Application Support/com.tenso.desktop",
+              "~/Library/Caches/com.tenso.desktop",
+              "~/Library/Preferences/com.tenso.desktop.plist",
+            ]
+          end
+          CASK
+
+          sed -i "s/VERSION_PLACEHOLDER/${VERSION}/g" tap/Casks/tenso.rb
+          sed -i "s/SHA256_PLACEHOLDER/${SHA256}/g" tap/Casks/tenso.rb
+
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/tenso.rb
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "chore: bump tenso to ${VERSION}"
+          git push
