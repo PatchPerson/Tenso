@@ -10,6 +10,7 @@ import { EnvManager } from "../components/environments/EnvManager";
 import { ImportModal, type ImportTab } from "../components/import/ImportModal";
 import { Settings } from "./Settings";
 import { HistoryPanel, HistoryOverlays, useHistoryCtxDismiss } from "../components/layout/HistoryPanel";
+import { UpdateCheck } from "../components/shared/UpdateCheck";
 import { tabs, activeTabId, getActiveTab, updateTab, executeRequest, createNewTab, saveRequest, saveAllTabs, closeTab, isWebSocketTab, connectWebSocket, sendWebSocketMessage } from "../stores/request";
 import { kbd } from "../lib/platform";
 import { activeTeam, activeWorkspace } from "../stores/collections";
@@ -189,6 +190,7 @@ export const MainWorkspace: Component = () => {
             title="History"
           ><SideNavIcon type="history" active={sidePanel() === "history"} /></button>
           <div class="sidebar-nav-spacer" />
+          <UpdateCheck />
           <button
             class="sidebar-nav-btn"
             onClick={() => setShowImportModal("tenso")}

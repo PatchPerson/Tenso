@@ -1,6 +1,5 @@
 import { Component, Show, onMount } from "solid-js";
 import { MainWorkspace } from "./pages/MainWorkspace";
-import { UpdateCheck } from "./components/shared/UpdateCheck";
 import { AuthCodeModal } from "./components/shared/AuthCodeModal";
 import { ToastContainer } from "./components/shared/Toast";
 import { loadTeams, activeTeam } from "./stores/collections";
@@ -55,7 +54,6 @@ const App: Component = () => {
 
   return (
     <>
-      <UpdateCheck />
       <MainWorkspace />
       <Show when={showCodeEntry()}>
         <AuthCodeModal />
