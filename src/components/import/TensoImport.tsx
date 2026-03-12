@@ -3,6 +3,7 @@ import { importTenso, listEnvironments, createEnvironment, updateEnvironment } f
 import { loadCollections, activeTeam } from "../../stores/collections";
 import { triggerPush } from "../../lib/sync";
 import { persistImportedTree } from "../../lib/import-utils";
+import { readJsonFile, FilePickerDropzone, ImportModalWrapper } from "./shared";
 
 interface Props {
   onClose: () => void;
@@ -15,11 +16,8 @@ export const TensoImport: Component<Props> = (props) => {
   const [importing, setImporting] = createSignal(false);
 
   const handleFileSelect = async (e: Event) => {
-    const input = e.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file) return;
-
-    const text = await file.text();
+    const text = await readJsonFile(e);
+    if (!text) return;
     setJsonContent(text);
     setError("");
   };
@@ -94,36 +92,7 @@ export const TensoImport: Component<Props> = (props) => {
   const content = () => (
     <>
       <div class="modal-body">
-        <div style={{ "margin-bottom": "12px" }}>
-          <label
-            style={{
-              display: "inline-flex",
-              "align-items": "center",
-              gap: "8px",
-              padding: "8px 16px",
-              background: "var(--bg-tertiary)",
-              border: "1px solid var(--border)",
-              "border-radius": "var(--radius-md)",
-              cursor: "pointer",
-              "font-size": "13px",
-              color: "var(--text-secondary)",
-              transition: "all 200ms",
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-              <polyline points="17 8 12 3 7 8" />
-              <line x1="12" y1="3" x2="12" y2="15" />
-            </svg>
-            Choose .json file
-            <input
-              type="file"
-              accept=".json"
-              style={{ display: "none" }}
-              onChange={handleFileSelect}
-            />
-          </label>
-        </div>
+        <FilePickerDropzone onChange={handleFileSelect} />
 
         <div style={{ position: "relative" }}>
           <textarea
@@ -179,17 +148,9 @@ export const TensoImport: Component<Props> = (props) => {
     </>
   );
 
-  if (props.embedded) return content();
-
   return (
-    <div class="modal-overlay" onClick={props.onClose}>
-      <div class="modal" onClick={(e) => e.stopPropagation()} style={{ width: "640px" }}>
-        <div class="modal-header">
-          <h3>Import Tenso Collection</h3>
-          <button class="icon-btn" onClick={props.onClose}>x</button>
-        </div>
-        {content()}
-      </div>
-    </div>
+    <ImportModalWrapper title="Import Tenso Collection" embedded={props.embedded} onClose={props.onClose}>
+      {content()}
+    </ImportModalWrapper>
   );
 };

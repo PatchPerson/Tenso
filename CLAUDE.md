@@ -36,3 +36,16 @@ This bumps version in `package.json`, `src-tauri/tauri.conf.json`, and `src-taur
 - Deployment: `exuberant-mink-69`
 - URL: `https://exuberant-mink-69.eu-west-1.convex.cloud`
 - Site: `https://exuberant-mink-69.eu-west-1.convex.site`
+
+## Code Conventions
+
+### TypeScript
+- Use `unknown` (not `any`) in catch blocks; narrow with `instanceof Error`
+- No `vite-env.d.ts` exists — `import.meta.env` access requires `as any` cast (known tech debt)
+- Prefer typed API wrappers from `src/lib/api.ts` over raw `invoke<>()` calls
+- Import components share common UI via `src/components/import/shared.tsx` (`FilePickerDropzone`, `ImportModalWrapper`, `readJsonFile`)
+
+### Build
+- `npm run build` runs `tsc && vite build` — must pass with zero warnings
+- Vendor chunks are split via `manualChunks` in `vite.config.ts` (Solid, Convex, Sentry) — keep main chunk under 500 kB
+- Avoid mixing static and dynamic `import()` of the same module — use static imports when the module is already in the dependency graph

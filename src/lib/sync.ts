@@ -202,8 +202,8 @@ async function applyRemoteChanges(result: any, localTeamId: string) {
     ...(environments || []),
   ];
   const timestamps = [
-    ...allItems.map((e: any) => e.updatedAt || 0),
-    ...(history || []).map((h: any) => h._creationTime || 0),
+    ...allItems.map((e: Record<string, unknown>) => (e.updatedAt as number) || 0),
+    ...(history || []).map((h: Record<string, unknown>) => (h._creationTime as number) || 0),
   ];
   const maxUpdatedAt = timestamps.length > 0 ? Math.max(...timestamps) : 0;
 

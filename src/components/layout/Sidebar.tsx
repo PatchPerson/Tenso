@@ -1,6 +1,6 @@
 import { Component, For, Show, createSignal, onMount } from "solid-js";
 import { Portal } from "solid-js/web";
-import { collections, addCollection, removeCollection, addRequest, removeRequest, moveRequest, loading, activeWorkspace, CollectionNode, expandedFolders, expandFolder, toggleFolder } from "../../stores/collections";
+import { collections, addCollection, removeCollection, addRequest, removeRequest, moveRequest, loading, activeWorkspace, CollectionNode, expandedFolders, expandFolder, toggleFolder, loadCollections } from "../../stores/collections";
 import { openRequestInTab } from "../../stores/request";
 import * as api from "../../lib/api";
 import { buildCurlCommand } from "../../lib/curl";
@@ -48,7 +48,6 @@ const RequestContextMenu: Component<{
       // Reload collections to reflect change
       const wsId = activeWorkspace();
       if (wsId) {
-        const { loadCollections } = await import("../../stores/collections");
         await loadCollections(wsId);
       }
       triggerPush();
@@ -79,7 +78,6 @@ const RequestContextMenu: Component<{
       }
       const wsId = activeWorkspace();
       if (wsId) {
-        const { loadCollections } = await import("../../stores/collections");
         await loadCollections(wsId);
       }
       triggerPush();
@@ -201,7 +199,6 @@ const FolderContextMenu: Component<{
     await api.updateCollection(props.node.collection.id, name);
     const wsId = activeWorkspace();
     if (wsId) {
-      const { loadCollections } = await import("../../stores/collections");
       await loadCollections(wsId);
     }
     triggerPush();

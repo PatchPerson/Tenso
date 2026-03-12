@@ -1,6 +1,6 @@
 import { getConvexClient } from "./convex";
 import { api } from "../../convex/_generated/api";
-import { invoke } from "@tauri-apps/api/core";
+import { getAllForTeam } from "./api";
 import type { Id } from "../../convex/_generated/dataModel";
 
 export async function migrateLocalData(
@@ -10,12 +10,7 @@ export async function migrateLocalData(
   const migrationKey = `migrated_${localTeamId}_${convexTeamId}`;
   if (localStorage.getItem(migrationKey)) return;
 
-  const data = await invoke<{
-    collections: any[];
-    requests: any[];
-    environments: any[];
-    history: any[];
-  }>("get_all_for_team", { teamId: localTeamId });
+  const data = await getAllForTeam(localTeamId);
 
   const client = getConvexClient();
   const teamId = convexTeamId as Id<"teams">;
@@ -28,7 +23,7 @@ export async function migrateLocalData(
     const batch = data.collections.slice(i, i + batchSize);
     await client.mutation(api.sync.push, {
       teamId,
-      collections: batch.map((c: any) => ({
+      collections: batch.map((c) => ({
         clientId: c.id,
         parentClientId: c.parent_id || undefined,
         name: c.name,
@@ -49,7 +44,7 @@ export async function migrateLocalData(
     await client.mutation(api.sync.push, {
       teamId,
       collections: [],
-      requests: batch.map((r: any) => ({
+      requests: batch.map((r) => ({
         clientId: r.id,
         collectionClientId: r.collection_id,
         name: r.name,
@@ -78,7 +73,7 @@ export async function migrateLocalData(
       teamId,
       collections: [],
       requests: [],
-      environments: batch.map((e: any) => ({
+      environments: batch.map((e) => ({
         clientId: e.id,
         name: e.name,
         variables: JSON.stringify(e.variables),
@@ -99,7 +94,7 @@ export async function migrateLocalData(
       collections: [],
       requests: [],
       environments: [],
-      history: batch.map((h: any) => ({
+      history: batch.map((h) => ({
         clientId: h.id,
         method: h.method,
         url: h.url,

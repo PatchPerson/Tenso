@@ -115,8 +115,6 @@ export interface HttpResponse {
 
 // Team API
 export const listTeams = () => invoke<Team[]>("list_teams");
-export const createTeam = (name: string) => invoke<Team>("create_team", { name });
-
 // Collection API
 export const listCollections = (teamId: string) => invoke<Collection[]>("list_collections", { teamId });
 export const createCollection = (teamId: string, parentId: string | null, name: string) =>
@@ -154,8 +152,6 @@ export const getHistoryEntry = (id: string, teamId: string) => invoke<HistoryEnt
 
 // Import API
 export const importCurl = (curlCommand: string) => invoke<SavedRequest>("import_curl", { curlCommand });
-export const importOpenapi = (specJson: string, teamId: string) => invoke<Collection[]>("import_openapi", { specJson, teamId });
-
 export interface ImportedCollection {
   name: string;
   children: ImportedCollection[];
@@ -165,13 +161,6 @@ export interface ImportedCollection {
 
 export const importPostman = (jsonContent: string) => invoke<ImportedCollection>("import_postman", { jsonContent });
 export const importTenso = (jsonContent: string) => invoke<[ImportedCollection, Environment[]]>("import_tenso", { jsonContent });
-
-// Code Generation API
-export const generateCode = (method: string, url: string, headers: KeyValue[], body: RequestBody, language: string) =>
-  invoke<string>("generate_code", { method, url, headers, body, language });
-
-// Script API
-export const runScript = (script: string, context: Record<string, unknown>) => invoke<unknown>("run_script", { script, context });
 
 // WebSocket API
 export const wsConnect = (id: string, url: string, headers: KeyValue[]) => invoke<void>("ws_connect", { id, url, headers });

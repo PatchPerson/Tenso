@@ -104,10 +104,6 @@ function deserializeTab(pt: PersistedTab): Tab {
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 let restoring = false;
 
-export function isRestoring(): boolean {
-  return restoring;
-}
-
 export function saveSession(): void {
   const teamId = activeTeam();
   if (!teamId || restoring) return;

@@ -150,8 +150,8 @@ export const Settings: Component = () => {
     try {
       const fetched = await fetchTweakcnThemes();
       setCommunityThemes(fetched);
-    } catch (e: any) {
-      setError(e?.message || "Failed to load community themes");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to load community themes");
     } finally {
       setLoading(false);
     }
@@ -294,8 +294,8 @@ export const Settings: Component = () => {
       });
       setInviteStatus({ type: "success", msg: `Invited ${email}` });
       setInviteEmail("");
-    } catch (err: any) {
-      setInviteStatus({ type: "error", msg: err.message || "Failed to invite" });
+    } catch (err: unknown) {
+      setInviteStatus({ type: "error", msg: err instanceof Error ? err.message : "Failed to invite" });
     } finally {
       setInviting(false);
     }
@@ -309,7 +309,7 @@ export const Settings: Component = () => {
         userId: userId as Id<"users">,
       });
       refetchMembers();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Remove member failed:", err);
     }
   };
@@ -326,7 +326,7 @@ export const Settings: Component = () => {
       }
       setNewTeamName("");
       setShowCreateTeam(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Create team failed:", err);
     } finally {
       setCreatingTeam(false);
