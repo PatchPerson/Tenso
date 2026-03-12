@@ -60,6 +60,7 @@ export async function initAuth() {
           // Transient failure (network, reconnecting) — keep tokens for next launch
           console.warn("Token refresh failed, keeping tokens for retry:", err);
           captureError(err, { context: "token_refresh" });
+          setConvexAuth(null); // Clear client auth so actions aren't blocked
           return;
         }
       }
@@ -92,6 +93,7 @@ export async function initAuth() {
     // Transient failure — keep tokens for retry on next launch
     console.warn("Auth init failed, keeping tokens for retry:", err);
     captureError(err, { context: "auth_init" });
+    setConvexAuth(null); // Clear client auth so actions aren't blocked
   }
 }
 
@@ -101,9 +103,12 @@ export async function signInWithGitHub() {
     setAuthError(null);
     const client = getConvexClient();
 
-    const result = await client.action(api.auth.signIn, {
-      provider: "github",
-    });
+    const result = await Promise.race([
+      client.action(api.auth.signIn, { provider: "github" }),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Sign in timed out — please try again")), 10_000)
+      ),
+    ]);
 
     if (result && typeof result === "object" && "redirect" in result) {
       if ("verifier" in result) {
