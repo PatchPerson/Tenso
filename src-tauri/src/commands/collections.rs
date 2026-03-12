@@ -56,3 +56,9 @@ pub async fn update_request(state: tauri::State<'_, Arc<AppState>>, request: Sav
 pub async fn delete_request(state: tauri::State<'_, Arc<AppState>>, id: String) -> Result<(), String> {
     state.db.delete_request(&id).map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+#[allow(dead_code)] // Called via Tauri invoke from frontend
+pub async fn move_request(state: tauri::State<'_, Arc<AppState>>, id: String, collection_id: String) -> Result<(), String> {
+    state.db.move_request(&id, &collection_id).map_err(|e| e.to_string())
+}

@@ -10,7 +10,7 @@ import { WsMessageStream } from "../components/response/WsMessageStream";
 import { EnvManager } from "../components/environments/EnvManager";
 import { ImportModal, type ImportTab } from "../components/import/ImportModal";
 import { Settings } from "./Settings";
-import { tabs, activeTabId, getActiveTab, updateTab, executeRequest, createNewTab, saveRequest, isWebSocketTab, connectWebSocket, openHistoryInTab, openHistoryInTabWithResponse } from "../stores/request";
+import { tabs, activeTabId, getActiveTab, updateTab, executeRequest, createNewTab, saveRequest, saveAllTabs, closeTab, isWebSocketTab, connectWebSocket, sendWebSocketMessage, openHistoryInTab, openHistoryInTabWithResponse } from "../stores/request";
 import { kbd } from "../lib/platform";
 import { activeTeam, activeWorkspace } from "../stores/collections";
 import { loadEnvironments } from "../stores/environments";
@@ -176,21 +176,34 @@ export const MainWorkspace: Component = () => {
         e.preventDefault();
         createNewTab();
       }
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        const tab = getActiveTab();
+        if (e.shiftKey) {
+          saveAllTabs();
+        } else if (tab) {
+          saveRequest(tab.id);
+        }
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === "w") {
+        e.preventDefault();
+        const tabId = activeTabId();
+        if (tabId) closeTab(tabId);
+      }
       if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
         e.preventDefault();
         const tab = getActiveTab();
         if (tab) {
           if (isWebSocketTab(tab)) {
-            if (tab.wsStatus === "disconnected") connectWebSocket(tab.id);
+            if (e.shiftKey) {
+              sendWebSocketMessage(tab.id);
+            } else if (tab.wsStatus === "disconnected") {
+              connectWebSocket(tab.id);
+            }
           } else {
             executeRequest(tab.id, activeTeam());
           }
         }
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
-        e.preventDefault();
-        const tab = getActiveTab();
-        if (tab) saveRequest(tab.id);
       }
       if ((e.ctrlKey || e.metaKey) && e.key === "i") {
         e.preventDefault();

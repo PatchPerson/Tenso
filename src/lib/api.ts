@@ -131,6 +131,7 @@ export const createRequest = (collectionId: string, name: string, method: string
   invoke<SavedRequest>("create_request", { collectionId, name, method, url });
 export const updateRequest = (request: SavedRequest) => invoke<void>("update_request", { request });
 export const deleteRequest = (id: string) => invoke<void>("delete_request", { id });
+export const moveRequest = (id: string, collectionId: string) => invoke<void>("move_request", { id, collectionId });
 
 // HTTP API
 export const sendRequest = (

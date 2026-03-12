@@ -117,6 +117,17 @@ impl Database {
         Ok(())
     }
 
+    #[allow(dead_code)] // Called via Tauri command
+    pub fn move_request(&self, request_id: &str, collection_id: &str) -> Result<(), rusqlite::Error> {
+        let conn = self.conn.lock().unwrap();
+        let now = chrono::Utc::now().to_rfc3339();
+        conn.execute(
+            "UPDATE requests SET collection_id = ?1, updated_at = ?2 WHERE id = ?3",
+            rusqlite::params![collection_id, now, request_id],
+        )?;
+        Ok(())
+    }
+
     pub fn delete_collection(&self, id: &str) -> Result<(), rusqlite::Error> {
         let conn = self.conn.lock().unwrap();
         Self::delete_collection_tree_with_tombstones(&conn, id)?;

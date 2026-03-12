@@ -670,3 +670,12 @@ export async function saveRequest(tabId: string) {
   triggerPush();
   scheduleImmediateSave();
 }
+
+export async function saveAllTabs() {
+  const allTabs = tabs();
+  for (const tab of allTabs) {
+    if (tab.dirty) {
+      await saveRequest(tab.id);
+    }
+  }
+}

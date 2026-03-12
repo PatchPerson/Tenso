@@ -79,6 +79,7 @@ pub fn run() {
             commands::collections::create_request,
             commands::collections::update_request,
             commands::collections::delete_request,
+            commands::collections::move_request,
             commands::http::send_request,
             commands::environments::list_environments,
             commands::environments::create_environment,

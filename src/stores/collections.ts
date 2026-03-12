@@ -150,3 +150,15 @@ export async function removeRequest(id: string) {
   if (teamId) await loadCollections(teamId);
   triggerPush();
 }
+
+export async function moveRequest(id: string, targetCollectionId: string) {
+  try {
+    await api.moveRequest(id, targetCollectionId);
+    setLastUsedCollectionId(targetCollectionId);
+    const teamId = activeTeam();
+    if (teamId) await loadCollections(teamId);
+    triggerPush();
+  } catch (err) {
+    console.error("Failed to move request:", err);
+  }
+}

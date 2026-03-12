@@ -10,12 +10,18 @@ interface FlatItem {
   id: string;
   name: string;
   depth: number;
+  hasChildren: boolean;
 }
 
 function flattenTree(nodes: CollectionNode[], depth = 0): FlatItem[] {
   const result: FlatItem[] = [];
   for (const node of nodes) {
-    result.push({ id: node.collection.id, name: node.collection.name, depth });
+    result.push({
+      id: node.collection.id,
+      name: node.collection.name,
+      depth,
+      hasChildren: node.children.length > 0
+    });
     result.push(...flattenTree(node.children, depth + 1));
   }
   return result;
@@ -45,13 +51,13 @@ export const CollectionPickerDialog: Component<Props> = (props) => {
             {(item) => (
               <button
                 class="dropdown-item"
-                style={{ "padding-left": `${item.depth * 16 + 12}px` }}
                 onClick={() => props.onSelect(item.id)}
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style={{ "flex-shrink": "0", "margin-right": "8px" }}>
+                <div style={{ width: `${item.depth * 16}px`, "flex-shrink": 0 }} />
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style={{ "flex-shrink": "0", "margin-right": "8px", opacity: 0.7 }}>
                   <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
                 </svg>
-                <span class="ctx-label">{item.name}</span>
+                <span class="ctx-label" style={{ "font-weight": item.depth === 0 ? "500" : "400" }}>{item.name}</span>
               </button>
             )}
           </For>

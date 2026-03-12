@@ -271,8 +271,11 @@ npx convex functions
 | Shortcut | Action |
 |----------|--------|
 | `Ctrl+N` | New request tab |
-| `Ctrl+Enter` | Send request |
+| `Ctrl+W` | Close active tab |
 | `Ctrl+S` | Save request |
+| `Ctrl+Shift+S` | Save all tabs |
+| `Ctrl+Enter` | Send request / Connect WebSocket |
+| `Shift+Ctrl+Enter` | Send WebSocket message |
 | `Ctrl+I` | Import cURL |
 
 ---

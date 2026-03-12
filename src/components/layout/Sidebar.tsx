@@ -1,12 +1,13 @@
 import { Component, For, Show, createSignal, onMount } from "solid-js";
 import { Portal } from "solid-js/web";
-import { collections, addCollection, removeCollection, addRequest, removeRequest, loading, activeWorkspace, CollectionNode, expandedFolders, expandFolder, toggleFolder } from "../../stores/collections";
+import { collections, addCollection, removeCollection, addRequest, removeRequest, moveRequest, loading, activeWorkspace, CollectionNode, expandedFolders, expandFolder, toggleFolder } from "../../stores/collections";
 import { openRequestInTab } from "../../stores/request";
 import * as api from "../../lib/api";
 import { buildCurlCommand } from "../../lib/curl";
 import { triggerPush } from "../../lib/sync";
 import { kbd } from "../../lib/platform";
 import { ExportDialog } from "../import/ExportDialog";
+import { CollectionPickerDialog } from "../shared/CollectionPickerDialog";
 
 const ThreeDotsIcon = () => (
   <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
@@ -25,6 +26,7 @@ const RequestContextMenu: Component<{
   const [adjustedPos, setAdjustedPos] = createSignal(props.position);
   const [renaming, setRenaming] = createSignal(false);
   const [renameName, setRenameName] = createSignal(props.req.name);
+  const [showMovePicker, setShowMovePicker] = createSignal(false);
 
   onMount(() => {
     if (!menuRef) return;
@@ -97,6 +99,12 @@ const RequestContextMenu: Component<{
     props.onClose();
   };
 
+  const handleMove = (targetCollectionId: string) => {
+    moveRequest(props.req.id, targetCollectionId);
+    setShowMovePicker(false);
+    props.onClose();
+  };
+
   const handleDelete = () => {
     removeRequest(props.req.id);
     props.onClose();
@@ -142,7 +150,19 @@ const RequestContextMenu: Component<{
           <span class="ctx-label">Duplicate</span>
           <span class="ctx-shortcut">{kbd("Mod+D")}</span>
         </button>
+        <button class="dropdown-item" onClick={() => setShowMovePicker(true)}>
+          <span class="ctx-label">Move to...</span>
+        </button>
         <div class="dropdown-sep" />
+
+        <Show when={showMovePicker()}>
+          <Portal mount={document.body}>
+            <CollectionPickerDialog
+              onSelect={handleMove}
+              onClose={() => setShowMovePicker(false)}
+            />
+          </Portal>
+        </Show>
         <button class="dropdown-item danger" onClick={handleDelete}>
           <span class="ctx-label">Delete</span>
           <span class="ctx-shortcut">{kbd("Del")}</span>
