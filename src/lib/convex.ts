@@ -35,9 +35,8 @@ export function setConvexAuth(token: string | null) {
         localStorage.setItem("convex_refresh_token", newTokens.refreshToken);
         return newTokens.token;
       }
-    } catch {
-      localStorage.removeItem("convex_auth_token");
-      localStorage.removeItem("convex_refresh_token");
+    } catch (err) {
+      console.warn("Token refresh failed, keeping tokens for retry:", err);
     }
     return null;
   });
