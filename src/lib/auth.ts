@@ -5,6 +5,8 @@ import { startSync, stopSync } from "./sync";
 import { startInviteWatch, stopInviteWatch } from "./invites";
 import { activeTeam } from "../stores/collections";
 import { migrateLocalData } from "./migration";
+import { showToast } from "../stores/toast";
+import { captureError } from "./telemetry";
 
 export interface AuthUser {
   _id: string;
@@ -37,7 +39,6 @@ export async function initAuth() {
   if (!storedToken) return;
 
   try {
-    setAuthLoading(true);
     setConvexAuth(storedToken);
 
     let user = await getConvexClient().query(api.users.getMe, {});
@@ -55,8 +56,11 @@ export async function initAuth() {
             setConvexAuth(newTokens.token);
             user = await getConvexClient().query(api.users.getMe, {});
           }
-        } catch {
-          // Refresh failed — fall through to cleanup
+        } catch (err) {
+          // Transient failure (network, reconnecting) — keep tokens for next launch
+          console.warn("Token refresh failed, keeping tokens for retry:", err);
+          captureError(err, { context: "token_refresh" });
+          return;
         }
       }
     }
@@ -79,16 +83,15 @@ export async function initAuth() {
         startSync(convexTeamId, localTeamId);
       }
     } else {
+      // Server confirmed no valid session — clear tokens
       localStorage.removeItem("convex_auth_token");
       localStorage.removeItem("convex_refresh_token");
       setConvexAuth(null);
     }
-  } catch {
-    localStorage.removeItem("convex_auth_token");
-    localStorage.removeItem("convex_refresh_token");
-    setConvexAuth(null);
-  } finally {
-    setAuthLoading(false);
+  } catch (err) {
+    // Transient failure — keep tokens for retry on next launch
+    console.warn("Auth init failed, keeping tokens for retry:", err);
+    captureError(err, { context: "auth_init" });
   }
 }
 
@@ -111,10 +114,15 @@ export async function signInWithGitHub() {
       await open((result as any).redirect);
       // Show code entry modal
       setShowCodeEntry(true);
+    } else {
+      setAuthError("Unexpected sign-in response");
+      showToast("Sign in failed: unexpected response");
     }
   } catch (err) {
     console.error("Sign in failed:", err);
+    captureError(err, { context: "github_sign_in" });
     setAuthError("Failed to start sign in");
+    showToast("Failed to start sign in");
   } finally {
     setAuthLoading(false);
   }
@@ -175,6 +183,7 @@ export async function submitAuthCode(code: string) {
     setAuthError("Invalid code. Try again.");
   } catch (err) {
     console.error("Code verification failed:", err);
+    captureError(err, { context: "auth_code_submit" });
     setAuthError("Verification failed. Try again.");
   } finally {
     setAuthLoading(false);

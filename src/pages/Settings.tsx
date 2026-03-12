@@ -6,6 +6,7 @@ import { getConvexClient } from "../lib/convex";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { stopSync, syncErrorLog, clearSyncErrorLog } from "../lib/sync";
+import { isTelemetryEnabled, setTelemetryEnabled } from "../lib/telemetry";
 import type { ThemePreset } from "../lib/themes";
 
 const ThemeCard = (props: {
@@ -142,6 +143,7 @@ export const Settings: Component = () => {
   const [newTeamName, setNewTeamName] = createSignal("");
   const [creatingTeam, setCreatingTeam] = createSignal(false);
   const [showCreateTeam, setShowCreateTeam] = createSignal(false);
+  const [telemetryOn, setTelemetryOn] = createSignal(isTelemetryEnabled());
 
   onMount(async () => {
     setLoading(true);
@@ -693,6 +695,35 @@ export const Settings: Component = () => {
             </div>
           </div>
         </Show>
+
+        {/* Telemetry section — always visible */}
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <span class="settings-card-title">Telemetry</span>
+            <span class="settings-card-desc">Help improve Tenso by sending anonymous error reports</span>
+          </div>
+          <div class="settings-telemetry">
+            <label class="settings-telemetry-toggle">
+              <input
+                type="checkbox"
+                class="kv-checkbox"
+                checked={telemetryOn()}
+                onChange={(e) => {
+                  const enabled = e.currentTarget.checked;
+                  setTelemetryEnabled(enabled);
+                  setTelemetryOn(enabled);
+                }}
+              />
+              <span class="kv-checkbox-custom" />
+              <span>Send anonymous crash reports</span>
+            </label>
+            <p class="settings-telemetry-disclaimer">
+              When enabled, Tenso sends error reports to Sentry to help diagnose bugs.
+              No personal data, request contents, or usage analytics are collected.
+              Changes take effect on next launch.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

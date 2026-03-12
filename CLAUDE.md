@@ -29,6 +29,7 @@ This bumps version in `package.json`, `src-tauri/tauri.conf.json`, and `src-taur
 | `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Yes |
 | `OPENROUTER_API_KEY` | Yes |
 | `OPENROUTER_MODEL` | No (default: `openrouter/free`) |
+| `VITE_SENTRY_DSN` | No (telemetry disabled if absent) |
 
 ### Production Convex
 

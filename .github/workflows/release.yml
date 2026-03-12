@@ -82,6 +82,7 @@ jobs:
         run: |
           echo "VITE_CONVEX_URL=${{ secrets.VITE_CONVEX_URL }}" >> .env.production
           echo "VITE_CONVEX_SITE_URL=${{ secrets.VITE_CONVEX_SITE_URL }}" >> .env.production
+          echo "VITE_SENTRY_DSN=${{ secrets.VITE_SENTRY_DSN }}" >> .env.production
 
       - name: Build Tauri app
         shell: bash

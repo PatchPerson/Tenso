@@ -8,6 +8,7 @@ import { activeTeam } from "../stores/collections";
 import { tabs, updateTab } from "../stores/request";
 import * as localApi from "./api";
 import { showToast } from "../stores/toast";
+import { captureError } from "./telemetry";
 
 export type SyncState = "offline" | "syncing" | "synced" | "error";
 
@@ -80,6 +81,7 @@ export function startSync(convexTeamId: string, localTeamId: string) {
             }
           } catch (err) {
             console.error("Sync pull error:", err);
+            captureError(err, { context: "sync_pull" });
             if (!syncStopped) {
               setSyncState("error");
               addSyncError(err);
@@ -90,6 +92,7 @@ export function startSync(convexTeamId: string, localTeamId: string) {
     })
     .catch((err) => {
       console.error("Failed to start sync:", err);
+      captureError(err, { context: "sync_start" });
       if (!syncStopped) {
         setSyncState("error");
         addSyncError(err);
@@ -354,6 +357,7 @@ async function pushChanges(convexTeamId: string, localTeamId: string) {
     setSyncError(null);
   } catch (err) {
     console.error("Sync push error:", err);
+    captureError(err, { context: "sync_push" });
     setSyncState("error");
     addSyncError(err);
   } finally {
