@@ -417,11 +417,14 @@ input, textarea, [contenteditable="true"], .response-body, .response-headers-raw
 }
 
 .method-badge {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   font-family: var(--font-mono);
   letter-spacing: 0.5px;
   line-height: 1;
+  margin-top: 1.5px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .method-badge.get { color: var(--method-get); }
