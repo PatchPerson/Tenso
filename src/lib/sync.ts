@@ -71,21 +71,19 @@ export function startSync(convexTeamId: string, localTeamId: string) {
           if (syncStopped || !result) return;
           try {
             await applyRemoteChanges(result, localTeamId);
-            if (!syncStopped) {
-              setSyncState("synced");
-              setSyncError(null);
-              if (!hasReconciled) {
-                hasReconciled = true;
-                reconcileRestoredTabs();
-              }
+            if (syncStopped) return;
+            setSyncState("synced");
+            setSyncError(null);
+            if (!hasReconciled) {
+              hasReconciled = true;
+              reconcileRestoredTabs();
             }
           } catch (err) {
             console.error("Sync pull error:", err);
             captureError(err, { context: "sync_pull" });
-            if (!syncStopped) {
-              setSyncState("error");
-              addSyncError(err);
-            }
+            if (syncStopped) return;
+            setSyncState("error");
+            addSyncError(err);
           }
         }
       );

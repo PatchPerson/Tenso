@@ -66,28 +66,29 @@ export async function initAuth() {
       }
     }
 
-    if (user) {
-      setAuthUser(user as AuthUser);
-      const storedTeam = localStorage.getItem("active_team_id");
-      if (storedTeam) {
-        setActiveTeamId(storedTeam);
-      } else if (user.teams && user.teams.length > 0) {
-        const personal = (user.teams as any[]).find((t: any) => t.isPersonal);
-        setActiveTeamId((personal || user.teams[0])._id);
-      }
-      // Auto-start sync + invite watch
-      startInviteWatch();
-      const localTeamId = activeTeam();
-      const convexTeamId = activeTeamId();
-      if (localTeamId && convexTeamId) {
-        await migrateLocalData(convexTeamId, localTeamId);
-        startSync(convexTeamId, localTeamId);
-      }
-    } else {
+    if (!user) {
       // Server confirmed no valid session — clear tokens
       localStorage.removeItem("convex_auth_token");
       localStorage.removeItem("convex_refresh_token");
       setConvexAuth(null);
+      return;
+    }
+
+    setAuthUser(user as AuthUser);
+    const storedTeam = localStorage.getItem("active_team_id");
+    if (storedTeam) {
+      setActiveTeamId(storedTeam);
+    } else if (user.teams && user.teams.length > 0) {
+      const personal = (user.teams as any[]).find((t: any) => t.isPersonal);
+      setActiveTeamId((personal || user.teams[0])._id);
+    }
+    // Auto-start sync + invite watch
+    startInviteWatch();
+    const localTeamId = activeTeam();
+    const convexTeamId = activeTeamId();
+    if (localTeamId && convexTeamId) {
+      await migrateLocalData(convexTeamId, localTeamId);
+      startSync(convexTeamId, localTeamId);
     }
   } catch (err) {
     // Transient failure — keep tokens for retry on next launch
