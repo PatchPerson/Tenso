@@ -323,3 +323,386 @@ fn convert_auth(auth: Option<&PostmanAuth>) -> AuthConfig {
         _ => AuthConfig::None,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn minimal_get_request() {
+        let input = json!({
+            "info": { "name": "My API" },
+            "item": [{
+                "name": "Get Users",
+                "request": {
+                    "method": "GET",
+                    "url": "https://api.example.com/users"
+                }
+            }]
+        }).to_string();
+
+        let result = parse_postman_collection(&input).unwrap();
+        assert_eq!(result.name, "My API");
+        assert_eq!(result.requests.len(), 1);
+        assert_eq!(result.requests[0].method, "GET");
+        assert_eq!(result.requests[0].name, "Get Users");
+        assert_eq!(result.requests[0].url, "https://api.example.com/users");
+    }
+
+    #[test]
+    fn detailed_url_with_query_params() {
+        let input = json!({
+            "info": { "name": "Test" },
+            "item": [{
+                "name": "Search",
+                "request": {
+                    "method": "GET",
+                    "url": {
+                        "raw": "https://example.com/search?q=test",
+                        "query": [
+                            { "key": "q", "value": "test" },
+                            { "key": "page", "value": "1" }
+                        ]
+                    }
+                }
+            }]
+        }).to_string();
+
+        let result = parse_postman_collection(&input).unwrap();
+        let req = &result.requests[0];
+        assert_eq!(req.params.len(), 2);
+        assert_eq!(req.params[0].key, "q");
+        assert_eq!(req.params[0].value, "test");
+        assert_eq!(req.params[1].key, "page");
+        assert!(req.params[0].enabled);
+    }
+
+    #[test]
+    fn disabled_query_param() {
+        let input = json!({
+            "info": { "name": "Test" },
+            "item": [{
+                "name": "R1",
+                "request": {
+                    "method": "GET",
+                    "url": {
+                        "raw": "https://example.com",
+                        "query": [{ "key": "debug", "value": "true", "disabled": true }]
+                    }
+                }
+            }]
+        }).to_string();
+
+        let result = parse_postman_collection(&input).unwrap();
+        assert!(!result.requests[0].params[0].enabled);
+    }
+
+    #[test]
+    fn nested_folders() {
+        let input = json!({
+            "info": { "name": "API" },
+            "item": [{
+                "name": "Users",
+                "item": [{
+                    "name": "Get User",
+                    "request": { "method": "GET", "url": "https://example.com/users/1" }
+                }]
+            }]
+        }).to_string();
+
+        let result = parse_postman_collection(&input).unwrap();
+        assert!(result.requests.is_empty());
+        assert_eq!(result.children.len(), 1);
+        assert_eq!(result.children[0].name, "Users");
+        assert_eq!(result.children[0].requests.len(), 1);
+        assert_eq!(result.children[0].requests[0].name, "Get User");
+    }
+
+    #[test]
+    fn body_raw_json_detected() {
+        let input = json!({
+            "info": { "name": "Test" },
+            "item": [{
+                "name": "Create",
+                "request": {
+                    "method": "POST",
+                    "url": "https://example.com",
+                    "body": { "mode": "raw", "raw": "{\"name\": \"test\"}" }
+                }
+            }]
+        }).to_string();
+
+        let result = parse_postman_collection(&input).unwrap();
+        assert!(matches!(result.requests[0].body, RequestBody::Json { .. }));
+    }
+
+    #[test]
+    fn body_raw_text_not_json() {
+        let input = json!({
+            "info": { "name": "Test" },
+            "item": [{
+                "name": "Send",
+                "request": {
+                    "method": "POST",
+                    "url": "https://example.com",
+                    "body": { "mode": "raw", "raw": "Hello World" }
+                }
+            }]
+        }).to_string();
+
+        let result = parse_postman_collection(&input).unwrap();
+        assert!(matches!(result.requests[0].body, RequestBody::Raw { .. }));
+    }
+
+    #[test]
+    fn body_urlencoded() {
+        let input = json!({
+            "info": { "name": "Test" },
+            "item": [{
+                "name": "Login",
+                "request": {
+                    "method": "POST",
+                    "url": "https://example.com/login",
+                    "body": {
+                        "mode": "urlencoded",
+                        "urlencoded": [
+                            { "key": "username", "value": "admin" },
+                            { "key": "password", "value": "secret", "disabled": true }
+                        ]
+                    }
+                }
+            }]
+        }).to_string();
+
+        let result = parse_postman_collection(&input).unwrap();
+        match &result.requests[0].body {
+            RequestBody::FormUrlEncoded { params } => {
+                assert_eq!(params.len(), 2);
+                assert_eq!(params[0].key, "username");
+                assert!(params[0].enabled);
+                assert!(!params[1].enabled);
+            }
+            other => panic!("expected FormUrlEncoded, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn body_formdata() {
+        let input = json!({
+            "info": { "name": "Test" },
+            "item": [{
+                "name": "Upload",
+                "request": {
+                    "method": "POST",
+                    "url": "https://example.com/upload",
+                    "body": {
+                        "mode": "formdata",
+                        "formdata": [
+                            { "key": "file", "value": "/path/to/file", "type": "file" },
+                            { "key": "desc", "value": "my file" }
+                        ]
+                    }
+                }
+            }]
+        }).to_string();
+
+        let result = parse_postman_collection(&input).unwrap();
+        match &result.requests[0].body {
+            RequestBody::FormData { params } => {
+                assert_eq!(params.len(), 2);
+                assert_eq!(params[0].param_type, "file");
+                assert_eq!(params[1].param_type, "text");
+            }
+            other => panic!("expected FormData, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn body_graphql() {
+        let input = json!({
+            "info": { "name": "Test" },
+            "item": [{
+                "name": "Query",
+                "request": {
+                    "method": "POST",
+                    "url": "https://example.com/graphql",
+                    "body": {
+                        "mode": "graphql",
+                        "graphql": { "query": "{ users { id } }", "variables": "{}" }
+                    }
+                }
+            }]
+        }).to_string();
+
+        let result = parse_postman_collection(&input).unwrap();
+        match &result.requests[0].body {
+            RequestBody::GraphQL { query, variables } => {
+                assert!(query.contains("users"));
+                assert_eq!(variables, "{}");
+            }
+            other => panic!("expected GraphQL, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn auth_bearer() {
+        let input = json!({
+            "info": { "name": "Test" },
+            "item": [{
+                "name": "Protected",
+                "request": {
+                    "method": "GET",
+                    "url": "https://example.com",
+                    "auth": {
+                        "type": "bearer",
+                        "bearer": [{ "key": "token", "value": "my-token-123" }]
+                    }
+                }
+            }]
+        }).to_string();
+
+        let result = parse_postman_collection(&input).unwrap();
+        match &result.requests[0].auth {
+            AuthConfig::Bearer { token } => assert_eq!(token, "my-token-123"),
+            other => panic!("expected Bearer, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn auth_basic() {
+        let input = json!({
+            "info": { "name": "Test" },
+            "item": [{
+                "name": "Auth",
+                "request": {
+                    "method": "GET",
+                    "url": "https://example.com",
+                    "auth": {
+                        "type": "basic",
+                        "basic": [
+                            { "key": "username", "value": "admin" },
+                            { "key": "password", "value": "secret" }
+                        ]
+                    }
+                }
+            }]
+        }).to_string();
+
+        let result = parse_postman_collection(&input).unwrap();
+        match &result.requests[0].auth {
+            AuthConfig::Basic { username, password } => {
+                assert_eq!(username, "admin");
+                assert_eq!(password, "secret");
+            }
+            other => panic!("expected Basic, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn auth_apikey() {
+        let input = json!({
+            "info": { "name": "Test" },
+            "item": [{
+                "name": "API",
+                "request": {
+                    "method": "GET",
+                    "url": "https://example.com",
+                    "auth": {
+                        "type": "apikey",
+                        "apikey": [
+                            { "key": "key", "value": "X-API-Key" },
+                            { "key": "value", "value": "secret123" },
+                            { "key": "in", "value": "header" }
+                        ]
+                    }
+                }
+            }]
+        }).to_string();
+
+        let result = parse_postman_collection(&input).unwrap();
+        match &result.requests[0].auth {
+            AuthConfig::ApiKey { key, value, add_to } => {
+                assert_eq!(key, "X-API-Key");
+                assert_eq!(value, "secret123");
+                assert_eq!(add_to, "header");
+            }
+            other => panic!("expected ApiKey, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn disabled_headers() {
+        let input = json!({
+            "info": { "name": "Test" },
+            "item": [{
+                "name": "R",
+                "request": {
+                    "method": "GET",
+                    "url": "https://example.com",
+                    "header": [
+                        { "key": "Accept", "value": "application/json" },
+                        { "key": "X-Debug", "value": "true", "disabled": true }
+                    ]
+                }
+            }]
+        }).to_string();
+
+        let result = parse_postman_collection(&input).unwrap();
+        assert!(result.requests[0].headers[0].enabled);
+        assert!(!result.requests[0].headers[1].enabled);
+    }
+
+    #[test]
+    fn collection_variables() {
+        let input = json!({
+            "info": { "name": "Test" },
+            "item": [],
+            "variable": [
+                { "key": "base_url", "value": "https://api.example.com" },
+                { "key": "api_key" }
+            ]
+        }).to_string();
+
+        let result = parse_postman_collection(&input).unwrap();
+        assert_eq!(result.variables.len(), 2);
+        assert_eq!(result.variables[0].key, "base_url");
+        assert_eq!(result.variables[0].value, "https://api.example.com");
+        assert_eq!(result.variables[1].value, "");
+    }
+
+    #[test]
+    fn no_body_returns_none() {
+        let input = json!({
+            "info": { "name": "Test" },
+            "item": [{
+                "name": "R",
+                "request": { "method": "GET", "url": "https://example.com" }
+            }]
+        }).to_string();
+
+        let result = parse_postman_collection(&input).unwrap();
+        assert!(matches!(result.requests[0].body, RequestBody::None));
+    }
+
+    #[test]
+    fn invalid_json_returns_error() {
+        let result = parse_postman_collection("not valid json");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Invalid Postman collection JSON"));
+    }
+
+    #[test]
+    fn default_method_is_get() {
+        let input = json!({
+            "info": { "name": "Test" },
+            "item": [{
+                "name": "R",
+                "request": { "url": "https://example.com" }
+            }]
+        }).to_string();
+
+        let result = parse_postman_collection(&input).unwrap();
+        assert_eq!(result.requests[0].method, "GET");
+    }
+}

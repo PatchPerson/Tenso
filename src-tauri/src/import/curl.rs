@@ -112,3 +112,136 @@ pub fn parse_curl(input: &str) -> Result<SavedRequest, String> {
         updated_at: now,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn basic_get() {
+        let r = parse_curl("curl https://api.example.com/users").unwrap();
+        assert_eq!(r.method, "GET");
+        assert!(r.url.contains("api.example.com/users"));
+        assert!(r.params.is_empty());
+        assert!(r.headers.is_empty());
+        assert!(matches!(r.body, RequestBody::None));
+        assert!(matches!(r.auth, AuthConfig::None));
+    }
+
+    #[test]
+    fn explicit_method_short_flag() {
+        let r = parse_curl("curl -X POST https://example.com").unwrap();
+        assert_eq!(r.method, "POST");
+    }
+
+    #[test]
+    fn explicit_method_long_flag() {
+        let r = parse_curl("curl --request DELETE https://example.com").unwrap();
+        assert_eq!(r.method, "DELETE");
+    }
+
+    #[test]
+    fn case_insensitive_method() {
+        let r = parse_curl("curl -X put https://example.com").unwrap();
+        assert_eq!(r.method, "PUT");
+    }
+
+    #[test]
+    fn headers_parsed() {
+        let r = parse_curl(
+            "curl -H 'Content-Type: application/json' -H 'Authorization: Bearer tok' https://example.com"
+        ).unwrap();
+        assert_eq!(r.headers.len(), 2);
+        assert_eq!(r.headers[0].key, "Content-Type");
+        assert_eq!(r.headers[0].value, "application/json");
+        assert_eq!(r.headers[1].key, "Authorization");
+        assert_eq!(r.headers[1].value, "Bearer tok");
+        assert!(r.headers[0].enabled);
+    }
+
+    #[test]
+    fn json_body_auto_promotes_to_post() {
+        let r = parse_curl(r#"curl -d '{"key":"val"}' https://example.com"#).unwrap();
+        assert_eq!(r.method, "POST");
+        match &r.body {
+            RequestBody::Json { content } => assert!(content.contains("key")),
+            other => panic!("expected Json body, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn explicit_method_not_overridden_by_body() {
+        let r = parse_curl(r#"curl -X PUT -d '{"key":"val"}' https://example.com"#).unwrap();
+        assert_eq!(r.method, "PUT");
+    }
+
+    #[test]
+    fn non_json_body_is_raw() {
+        let r = parse_curl("curl -d 'plain text' https://example.com").unwrap();
+        assert_eq!(r.method, "POST");
+        match &r.body {
+            RequestBody::Raw { content, content_type } => {
+                assert_eq!(content, "plain text");
+                assert_eq!(content_type, "text/plain");
+            }
+            other => panic!("expected Raw body, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn query_params_extracted_to_params_array() {
+        let r = parse_curl("curl 'https://example.com/api?foo=bar&baz=qux'").unwrap();
+        assert_eq!(r.params.len(), 2);
+        assert_eq!(r.params[0].key, "foo");
+        assert_eq!(r.params[0].value, "bar");
+        assert_eq!(r.params[1].key, "baz");
+        assert_eq!(r.params[1].value, "qux");
+        assert!(r.params[0].enabled);
+    }
+
+    #[test]
+    fn url_retains_original_with_query() {
+        let r = parse_curl("curl 'https://example.com/api?foo=bar'").unwrap();
+        assert!(r.url.contains("foo=bar"));
+    }
+
+    #[test]
+    fn name_uses_base_url_without_query() {
+        let r = parse_curl("curl 'https://example.com/api?foo=bar'").unwrap();
+        assert!(r.name.starts_with("GET"));
+        assert!(r.name.contains("example.com/api"));
+        assert!(!r.name.contains("foo=bar"));
+    }
+
+    #[test]
+    fn url_without_query_has_empty_params() {
+        let r = parse_curl("curl https://example.com/path").unwrap();
+        assert!(r.params.is_empty());
+    }
+
+    #[test]
+    fn no_url_returns_error() {
+        let r = parse_curl("curl -H 'Foo: bar'");
+        assert!(r.is_err());
+        assert!(r.unwrap_err().contains("No URL found"));
+    }
+
+    #[test]
+    fn data_raw_variant_parses_json() {
+        let r = parse_curl(r#"curl --data-raw '{"a":1}' https://example.com"#).unwrap();
+        assert!(matches!(r.body, RequestBody::Json { .. }));
+    }
+
+    #[test]
+    fn data_binary_variant_parses_json() {
+        let r = parse_curl(r#"curl --data-binary '{"a":1}' https://example.com"#).unwrap();
+        assert!(matches!(r.body, RequestBody::Json { .. }));
+    }
+
+    #[test]
+    fn without_curl_prefix() {
+        let r = parse_curl("https://example.com").unwrap();
+        assert_eq!(r.method, "GET");
+        assert!(r.url.contains("example.com"));
+    }
+}

@@ -91,3 +91,89 @@ fn generate_javascript(method: &str, url: &str, headers: &[KeyValue], body: &Req
     lines.push("console.log(data);".to_string());
     lines.join("\n")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn kv(key: &str, value: &str, enabled: bool) -> KeyValue {
+        KeyValue { key: key.into(), value: value.into(), enabled }
+    }
+
+    #[test]
+    fn curl_get_no_body() {
+        let out = generate("GET", "https://example.com", &[], &RequestBody::None, "curl").unwrap();
+        assert!(out.contains("curl -X GET"));
+        assert!(out.contains("https://example.com"));
+        assert!(!out.contains("-d"));
+    }
+
+    #[test]
+    fn curl_post_with_json() {
+        let body = RequestBody::Json { content: r#"{"key":"val"}"#.into() };
+        let out = generate("POST", "https://example.com", &[], &body, "curl").unwrap();
+        assert!(out.contains("-d"));
+        assert!(out.contains("Content-Type: application/json"));
+        assert!(out.contains(r#"{"key":"val"}"#));
+    }
+
+    #[test]
+    fn curl_with_raw_body() {
+        let body = RequestBody::Raw { content: "xml data".into(), content_type: "text/xml".into() };
+        let out = generate("POST", "https://example.com", &[], &body, "curl").unwrap();
+        assert!(out.contains("Content-Type: text/xml"));
+        assert!(out.contains("xml data"));
+    }
+
+    #[test]
+    fn curl_filters_disabled_headers() {
+        let headers = vec![kv("X-Enabled", "yes", true), kv("X-Disabled", "no", false)];
+        let out = generate("GET", "https://example.com", &headers, &RequestBody::None, "curl").unwrap();
+        assert!(out.contains("X-Enabled"));
+        assert!(!out.contains("X-Disabled"));
+    }
+
+    #[test]
+    fn python_with_json_body() {
+        let body = RequestBody::Json { content: r#"{"k":"v"}"#.into() };
+        let headers = vec![kv("Accept", "application/json", true)];
+        let out = generate("POST", "https://example.com", &headers, &body, "python").unwrap();
+        assert!(out.contains("import requests"));
+        assert!(out.contains("json=data"));
+        assert!(out.contains("requests.post"));
+        assert!(out.contains("headers=headers"));
+    }
+
+    #[test]
+    fn python_get_no_body_no_headers() {
+        let out = generate("GET", "https://example.com", &[], &RequestBody::None, "python").unwrap();
+        assert!(out.contains("requests.get(\"https://example.com\")"));
+        assert!(!out.contains("headers="));
+        assert!(!out.contains("json="));
+    }
+
+    #[test]
+    fn javascript_fetch_with_json() {
+        let body = RequestBody::Json { content: r#"{"k":"v"}"#.into() };
+        let out = generate("POST", "https://example.com", &[], &body, "javascript").unwrap();
+        assert!(out.contains("await fetch"));
+        assert!(out.contains("method: \"POST\""));
+        assert!(out.contains("JSON.stringify"));
+        assert!(out.contains("Content-Type"));
+    }
+
+    #[test]
+    fn javascript_fetch_with_raw_body() {
+        let body = RequestBody::Raw { content: "hello".into(), content_type: "text/plain".into() };
+        let out = generate("POST", "https://example.com", &[], &body, "javascript").unwrap();
+        assert!(out.contains("body:"));
+        assert!(!out.contains("JSON.stringify"));
+    }
+
+    #[test]
+    fn unsupported_language_returns_error() {
+        let r = generate("GET", "https://example.com", &[], &RequestBody::None, "ruby");
+        assert!(r.is_err());
+        assert!(r.unwrap_err().contains("Unsupported language"));
+    }
+}

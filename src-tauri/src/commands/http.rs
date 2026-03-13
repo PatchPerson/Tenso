@@ -264,3 +264,51 @@ pub async fn send_request(
     )
     .await
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn var(key: &str, value: &str, enabled: bool) -> KeyValue {
+        KeyValue { key: key.into(), value: value.into(), enabled }
+    }
+
+    #[test]
+    fn single_variable_replaced() {
+        let vars = vec![var("base", "https://example.com", true)];
+        assert_eq!(resolve("{{base}}/api", &vars), "https://example.com/api");
+    }
+
+    #[test]
+    fn multiple_variables_replaced() {
+        let vars = vec![var("proto", "https", true), var("host", "example.com", true)];
+        assert_eq!(resolve("{{proto}}://{{host}}", &vars), "https://example.com");
+    }
+
+    #[test]
+    fn disabled_variable_not_replaced() {
+        let vars = vec![var("key", "val", false)];
+        assert_eq!(resolve("{{key}}", &vars), "{{key}}");
+    }
+
+    #[test]
+    fn missing_variable_left_as_is() {
+        let result = resolve("{{unknown}}", &[]);
+        assert_eq!(result, "{{unknown}}");
+    }
+
+    #[test]
+    fn no_placeholders_returns_unchanged() {
+        let vars = vec![var("key", "val", true)];
+        assert_eq!(resolve("https://example.com", &vars), "https://example.com");
+    }
+
+    #[test]
+    fn variables_in_url_path() {
+        let vars = vec![var("host", "example.com", true), var("v", "v2", true)];
+        assert_eq!(
+            resolve("https://{{host}}/api/{{v}}/users", &vars),
+            "https://example.com/api/v2/users"
+        );
+    }
+}

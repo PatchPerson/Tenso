@@ -607,3 +607,207 @@ impl Database {
         self.get_modified_since(team_id, 0)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_db() -> Database {
+        Database::new(":memory:").unwrap()
+    }
+
+    fn get_team_id(db: &Database) -> String {
+        db.list_teams().unwrap()[0].id.clone()
+    }
+
+    fn make_history_entry(team_id: &str, method: &str, url: &str, timestamp: &str) -> HistoryEntry {
+        HistoryEntry {
+            id: ulid::Ulid::new().to_string(),
+            team_id: team_id.to_string(),
+            method: method.to_string(),
+            url: url.to_string(),
+            status: 200,
+            duration_ms: 100,
+            response_size: 42,
+            timestamp: timestamp.to_string(),
+            request_data: "{}".to_string(),
+            response_headers: "[]".to_string(),
+            response_body_preview: String::new(),
+            response_body: String::new(),
+        }
+    }
+
+    #[test]
+    fn default_team_created_on_init() {
+        let db = test_db();
+        let teams = db.list_teams().unwrap();
+        assert_eq!(teams.len(), 1);
+        assert_eq!(teams[0].name, "Default Team");
+    }
+
+    #[test]
+    fn create_and_list_collections() {
+        let db = test_db();
+        let team_id = get_team_id(&db);
+        db.create_collection(&team_id, None, "Collection A").unwrap();
+        db.create_collection(&team_id, None, "Collection B").unwrap();
+
+        let cols = db.list_collections(&team_id).unwrap();
+        assert_eq!(cols.len(), 2);
+        assert!(cols[0].sort_order < cols[1].sort_order);
+    }
+
+    #[test]
+    fn create_and_get_request() {
+        let db = test_db();
+        let team_id = get_team_id(&db);
+        let col = db.create_collection(&team_id, None, "Col").unwrap();
+        let req = db.create_request(&col.id, "Get Users", "GET", "https://example.com").unwrap();
+
+        let fetched = db.get_request(&req.id).unwrap().expect("request should exist");
+        assert_eq!(fetched.name, "Get Users");
+        assert_eq!(fetched.method, "GET");
+        assert_eq!(fetched.url, "https://example.com");
+        assert_eq!(fetched.collection_id, col.id);
+    }
+
+    #[test]
+    fn update_request_round_trips_json_fields() {
+        let db = test_db();
+        let team_id = get_team_id(&db);
+        let col = db.create_collection(&team_id, None, "Col").unwrap();
+        let mut req = db.create_request(&col.id, "Test", "POST", "https://example.com").unwrap();
+
+        req.headers = vec![KeyValue { key: "Accept".into(), value: "application/json".into(), enabled: true }];
+        req.params = vec![KeyValue { key: "q".into(), value: "test".into(), enabled: true }];
+        req.body = RequestBody::Json { content: r#"{"key":"val"}"#.into() };
+        req.auth = AuthConfig::Bearer { token: "tok123".into() };
+        db.update_request(&req).unwrap();
+
+        let fetched = db.get_request(&req.id).unwrap().unwrap();
+        assert_eq!(fetched.headers.len(), 1);
+        assert_eq!(fetched.headers[0].key, "Accept");
+        assert_eq!(fetched.params.len(), 1);
+        assert!(matches!(fetched.body, RequestBody::Json { .. }));
+        assert!(matches!(fetched.auth, AuthConfig::Bearer { .. }));
+    }
+
+    #[test]
+    fn delete_request_creates_tombstone() {
+        let db = test_db();
+        let team_id = get_team_id(&db);
+        let col = db.create_collection(&team_id, None, "Col").unwrap();
+        let req = db.create_request(&col.id, "R1", "GET", "https://example.com").unwrap();
+        let req_id = req.id.clone();
+
+        db.delete_request(&req_id).unwrap();
+
+        assert!(db.get_request(&req_id).unwrap().is_none());
+        let deletes = db.get_unsynced_deletes().unwrap();
+        assert!(deletes.iter().any(|(_, etype, eid)| etype == "request" && eid == &req_id));
+    }
+
+    #[test]
+    fn delete_collection_cascades_with_tombstones() {
+        let db = test_db();
+        let team_id = get_team_id(&db);
+        let col = db.create_collection(&team_id, None, "Col").unwrap();
+        let r1 = db.create_request(&col.id, "R1", "GET", "https://example.com/1").unwrap();
+        let r2 = db.create_request(&col.id, "R2", "POST", "https://example.com/2").unwrap();
+        let col_id = col.id.clone();
+
+        db.delete_collection(&col_id).unwrap();
+
+        assert!(db.get_request(&r1.id).unwrap().is_none());
+        assert!(db.get_request(&r2.id).unwrap().is_none());
+
+        let deletes = db.get_unsynced_deletes().unwrap();
+        assert!(deletes.iter().any(|(_, etype, eid)| etype == "collection" && eid == &col_id));
+        assert!(deletes.iter().any(|(_, etype, eid)| etype == "request" && eid == &r1.id));
+        assert!(deletes.iter().any(|(_, etype, eid)| etype == "request" && eid == &r2.id));
+    }
+
+    #[test]
+    fn history_add_and_list_ordered_desc() {
+        let db = test_db();
+        let team_id = get_team_id(&db);
+
+        db.add_history(&make_history_entry(&team_id, "GET", "https://example.com/1", "2024-01-01T00:00:00Z")).unwrap();
+        db.add_history(&make_history_entry(&team_id, "POST", "https://example.com/2", "2024-01-02T00:00:00Z")).unwrap();
+        db.add_history(&make_history_entry(&team_id, "PUT", "https://example.com/3", "2024-01-03T00:00:00Z")).unwrap();
+
+        let entries = db.list_history(&team_id, 2).unwrap();
+        assert_eq!(entries.len(), 2);
+        assert_eq!(entries[0].method, "PUT");
+        assert_eq!(entries[1].method, "POST");
+    }
+
+    #[test]
+    fn upsert_request_overwrites() {
+        let db = test_db();
+        let team_id = get_team_id(&db);
+        let col = db.create_collection(&team_id, None, "Col").unwrap();
+
+        let req = SavedRequest {
+            id: "fixed-id".into(),
+            collection_id: col.id.clone(),
+            name: "Version 1".into(),
+            method: "GET".into(),
+            url: "https://example.com".into(),
+            headers: vec![], params: vec![],
+            body: RequestBody::None, auth: AuthConfig::None,
+            pre_script: String::new(), post_script: String::new(),
+            ws_messages: vec![], sort_order: 1.0,
+            created_at: "2024-01-01T00:00:00Z".into(),
+            updated_at: "2024-01-01T00:00:00Z".into(),
+        };
+        db.upsert_request(&req).unwrap();
+
+        let mut req2 = req.clone();
+        req2.name = "Version 2".into();
+        db.upsert_request(&req2).unwrap();
+
+        let fetched = db.get_request("fixed-id").unwrap().unwrap();
+        assert_eq!(fetched.name, "Version 2");
+    }
+
+    #[test]
+    fn environment_crud() {
+        let db = test_db();
+        let team_id = get_team_id(&db);
+
+        let mut env = db.create_environment(&team_id, "Dev").unwrap();
+        assert_eq!(env.name, "Dev");
+        assert!(env.variables.is_empty());
+
+        env.variables = vec![KeyValue { key: "url".into(), value: "http://localhost".into(), enabled: true }];
+        db.update_environment(&env).unwrap();
+
+        let listed = db.list_environments(&team_id).unwrap();
+        assert_eq!(listed.len(), 1);
+        assert_eq!(listed[0].variables.len(), 1);
+        assert_eq!(listed[0].variables[0].key, "url");
+
+        db.delete_environment(&env.id).unwrap();
+        assert!(db.list_environments(&team_id).unwrap().is_empty());
+    }
+
+    #[test]
+    fn sync_state_defaults_to_zero() {
+        let db = test_db();
+        let team_id = get_team_id(&db);
+        let (pull, push) = db.get_sync_state(&team_id).unwrap();
+        assert_eq!(pull, 0);
+        assert_eq!(push, 0);
+    }
+
+    #[test]
+    fn sync_state_round_trips() {
+        let db = test_db();
+        let team_id = get_team_id(&db);
+        db.set_sync_state(&team_id, 100, 200).unwrap();
+        let (pull, push) = db.get_sync_state(&team_id).unwrap();
+        assert_eq!(pull, 100);
+        assert_eq!(push, 200);
+    }
+}
