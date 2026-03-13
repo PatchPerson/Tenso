@@ -98,7 +98,8 @@ export function startSync(convexTeamId: string, localTeamId: string) {
     });
 }
 
-async function applyRemoteChanges(result: any, localTeamId: string) {
+/** @internal Exported for testing */
+export async function applyRemoteChanges(result: any, localTeamId: string) {
   const { collections, requests, environments, history } = result;
 
   // Apply collections
@@ -212,7 +213,7 @@ async function applyRemoteChanges(result: any, localTeamId: string) {
     );
     await invoke("set_sync_state", {
       teamId: localTeamId,
-      lastPull: maxUpdatedAt,
+      lastPull: Math.floor(maxUpdatedAt),
       lastPush: currentState.lastPushAt,
     });
   }
